@@ -6,14 +6,14 @@ EMBEDDINGS = 'data/askubuntu/vector/vectors_pruned.200.txt'
 TRAIN = 'data/askubuntu/train_random.txt'
 
 def load_corpus(filename, word_dict):
-    corpus = []
+    corpus = [[0 for _ in range(38)] for _ in range(523751)]
     with open(filename) as f:
         for line in f:
             line = line.split('\t')
             index, title = int(line[0]), map(lambda x : get_index(word_dict, x),
                                              filter(lambda x : len(x) > 0,
                                                     line[1][:-1].split(' ')))
-            corpus.append(title)
+            corpus[index] = title
             
     max_length = max(map(len, corpus))
     corpus = map(lambda x : x + [len(word_dict)] * (max_length - len(x)), corpus)
@@ -31,15 +31,16 @@ def load_words(filename):
             line = map(lambda x : x.strip(), line.split(' '))[:-1]
             word, embedding = line[0], map(float, line[1:])
             
-            word_dict[word] = index
+            word_dict[word] = index + 1
             embeddings.append(embedding)
             
-    word_dict["''"] = len(word_dict)
-    word_dict["/"] = len(word_dict)
-    word_dict[","] = len(word_dict)
-    word_dict["'s"] = len(word_dict)
-    word_dict["'m"] = len(word_dict)
-    word_dict["UNK"] = len(word_dict)
+    word_dict["''"] = len(word_dict) + 1
+    word_dict["/"] = len(word_dict) + 1
+    word_dict[","] = len(word_dict) + 1
+    word_dict["'s"] = len(word_dict) + 1
+    word_dict["'m"] = len(word_dict) + 1
+    word_dict["UNK"] = len(word_dict) + 1
+    word_dict['END'] = len(word_dict) + 1
     
     embeddings.append(np.random.randn(200))
     embeddings.append(np.random.randn(200))
@@ -47,8 +48,9 @@ def load_words(filename):
     embeddings.append(np.random.randn(200))
     embeddings.append(np.random.randn(200))
     embeddings.append(np.random.randn(200))
-
-    return word_dict, np.array(embeddings, dtype=np.float64)
+    embeddings.append(np.zeros(200))
+    
+    return word_dict, np.array(embeddings, dtype=np.float32)
 
 def load_training(filename):
     qs = []
@@ -60,6 +62,7 @@ def load_training(filename):
             
             q = [int(q)]
             p = map(int, p.split(' '))
+
             Q = map(int, Q.split(' '))
 
             qs.append(q)
@@ -81,6 +84,7 @@ if __name__ == '__main__':
     word_dict, embeddings = load_words(EMBEDDINGS)
     corpus = load_corpus(CORPUS, word_dict)
     qs, ps, Qs = load_training(TRAIN)
+    print len(embeddings)
 
     with h5py.File('data/data.hdf5', 'w') as f:
         f['embeddings'] = embeddings
