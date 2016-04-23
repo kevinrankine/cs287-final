@@ -1,9 +1,9 @@
 import numpy as np
 import h5py
 
-CORPUS = 'data/askubuntu/text_tokenized.txt'
-EMBEDDINGS = 'data/askubuntu/vector/vectors_pruned.200.txt'
-TRAIN = 'data/askubuntu/train_random.txt'
+CORPUS = 'data/text_tokenized.txt'
+EMBEDDINGS = 'data/vector/vectors_pruned.200.txt'
+TRAIN = 'data/train_random.txt'
 
 def load_corpus(filename, word_dict):
     corpus = [[0 for _ in range(38)] for _ in range(523751)]
