@@ -21,7 +21,6 @@ function EncoderDecoder:__init(embeddings, corpus, d_hid, eta)
     encoder:add(nn.Sequencer(nn.Linear(d_hid, d_hid)))
     encoder:add(nn.Sequencer(nn.Tanh()))
     encoder:add(nn.SelectTable(-1))
-    
 
     local decoder = nn.Sequential()
     decoder:add(nn.GRU(d_hid, d_hid))

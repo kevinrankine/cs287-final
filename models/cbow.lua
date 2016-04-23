@@ -6,7 +6,6 @@ do
 	LT = nn.LookupTable(embeddings:size(1), embeddings:size(2))
 	LT.weight = embeddings
 	self.model:add(LT):add(nn.Mean(1))
-		       
     end
 
     function CBOW:similarity(s1, s2)
