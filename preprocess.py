@@ -72,7 +72,7 @@ def load_training(filename):
     max_length = max(map(len, ps))
     ps = map(lambda x : x + [0] * (max_length - len(x)), ps)
     
-    return np.array(qs, np.int64), np.array(ps, np.int64), np.array(Qs, np.int64)
+    return np.array(qs, dtype=np.int64), np.array(ps, dtype=np.int64), np.array(Qs, dtype=np.int64)
             
 def get_index(word_dict, word):
     if word in word_dict:
@@ -84,7 +84,6 @@ if __name__ == '__main__':
     word_dict, embeddings = load_words(EMBEDDINGS)
     corpus = load_corpus(CORPUS, word_dict)
     qs, ps, Qs = load_training(TRAIN)
-    print len(embeddings)
 
     with h5py.File('data/data.hdf5', 'w') as f:
         f['embeddings'] = embeddings

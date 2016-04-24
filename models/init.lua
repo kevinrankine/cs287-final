@@ -2,6 +2,6 @@ models = {}
 
 
 require('models.CBOW')
-require('models.EncoderDecoder')
+require('models.LSTMEncoder')
 
 return models

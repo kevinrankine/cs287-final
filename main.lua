@@ -6,6 +6,7 @@ cmd = torch.CmdLine()
 cmd:option('-model', 'cbow', 'which model to use')
 cmd:option('-d_hid', 100, 'size of rnn hidden state')
 cmd:option('-eta', 1e-3, 'learning rate')
+cmd:option('-cuda', 0, '1 if use GPU 0 o.w.')
 
 function main()
     local opt = cmd:parse(arg)
@@ -20,8 +21,8 @@ function main()
 	model = models.CBOW(embeddings, corpus)
 	print (score_model(model, qs, ps, Qs))
     elseif opt.model == 'rnn' then
-	model = models.EncoderDecoder(embeddings, corpus, opt.d_hid, opt.eta)
-	model:train()
+	model = models.LSTMEncoder(embeddings, corpus, opt.d_hid, opt.eta, opt.cuda)
+	model:train(qs, ps, Qs)
     end
 end
 
