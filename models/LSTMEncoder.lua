@@ -22,7 +22,7 @@ function LSTMEncoder:__init(embeddings, corpus, d_hid, eta, gpu)
     LT.weights = embeddings
     
     encoder:add(LT)
-    encoder:add(nn.SplitTable(1))
+    encoder:add(nn.SplitTable(2)) -- changed from 1
     encoder:add(nn.Sequencer(nn.GRU(d_in, d_hid)))
     encoder:add(nn.SelectTable(-1))
 
@@ -31,7 +31,7 @@ function LSTMEncoder:__init(embeddings, corpus, d_hid, eta, gpu)
     PT:add(encoder):add(encoder:clone())
     model:add(PT)
     
-    local criterion = nn.CosineEmbeddingCriterion()
+    local criterion = nn.CosineEmbeddingCriterion(0.5)
 
     if gpu ~= 0 then
 	require('cutorch')
@@ -63,9 +63,9 @@ function LSTMEncoder:update(sent1, sent2, y)
     self.model:forget()
     self.model_grad_params:zero()
 
-    sent1, sent2 = self:truncate(sent1), self:truncate(sent2)
+    --    sent1, sent2 = self:truncate(sent1), self:truncate(sent2)
     if self.gpu ~= 0 then
-	sent1, sent2 = sent1:cuda(), sent2:cuda()
+	sent1, sent2, y = sent1:cuda(), sent2:cuda(), y:cuda()
     end
     local out = self.model:forward({sent1, sent2})
     local loss = self.criterion:forward(out, y)
@@ -77,8 +77,14 @@ function LSTMEncoder:update(sent1, sent2, y)
 end
 
 function LSTMEncoder:train(Xq, Xp, y)
-    for i = 1, Xq:size(1) do
-	print (self:update(Xq[i], Xp[i], y[i]))
+   local bsize = 101
+    for i = 1, Xq:size(1), bsize do
+       local loss = self:update(Xq:narrow(1, i, bsize),
+		   Xp:narrow(1, i, bsize),
+		   y:narrow(1, i, bsize))
+	
+       print (i / Xq:size(1), loss)
+	
     end
 end
 
