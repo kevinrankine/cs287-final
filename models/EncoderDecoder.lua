@@ -16,12 +16,14 @@ function EncoderDecoder:__init(embeddings, corpus, d_hid, eta, gpu)
 
     local encoder = nn.Sequential()
     local LT = nn.LookupTable(nwords, d_in)
+
     LT.weights = embeddings
     encoder:add(LT)
     encoder:add(nn.SplitTable(1))
     encoder:add(nn.Sequencer(nn.GRU(d_in, d_hid)))
     encoder:add(nn.SelectTable(-1))
     
+    LT.weight = embeddings
 
     local decoder = nn.Sequential()
     decoder:add(LT:clone())
@@ -79,8 +81,7 @@ end
 function EncoderDecoder:train()
     for i = 1, self.corpus:size(1) do
 	if self.corpus[i][1] ~= 0 then
-	    print (self.corpus[i])
-	    local loss = self:update(self.corpus[i])
+	    local loss = self:update(self.corpus[2])
 	    print (loss)
 	end
     end

@@ -34,10 +34,10 @@ function LSTMEncoder:__init(embeddings, corpus, d_hid, eta, gpu)
     local criterion = nn.CosineEmbeddingCriterion()
 
     if gpu ~= 0 then
-       require('cutorch')
-       require('cunn')
-       model:cuda()
-       criterion:cuda()
+	require('cutorch')
+	require('cunn')
+	model:cuda()
+	criterion:cuda()
     end
 
     self.model = model
@@ -65,7 +65,7 @@ function LSTMEncoder:update(sent1, sent2, y)
 
     sent1, sent2 = self:truncate(sent1), self:truncate(sent2)
     if self.gpu ~= 0 then
-       sent1, sent2 = sent1:cuda(), sent2:cuda()
+	sent1, sent2 = sent1:cuda(), sent2:cuda()
     end
     local out = self.model:forward({sent1, sent2})
     local loss = self.criterion:forward(out, y)
@@ -76,23 +76,10 @@ function LSTMEncoder:update(sent1, sent2, y)
     return loss
 end
 
-function LSTMEncoder:train(qs, ps, Qs)
-   for i = 1, qs:size(1) do
-      local loss = 0
-      local sent1 = self.corpus[qs[i][1] + 1]
-      for j = 1, ps:size(2) do
-	 if ps[i][j] == 0 then
-	    break
-	 end
-	 local sent2 = self.corpus[ps[i][j] + 1]
-	 loss = loss + self:update(sent1, sent2, 1)
-      end
-      for j = 1, Qs:size(2) - 1 do
-	 local sent2 = self.corpus[Qs[i][j] + 1]
-	 loss = loss + self:update(sent1, sent2, -1)
-      end
-      print (i, loss)
-   end
+function LSTMEncoder:train(Xq, Xp, y)
+    for i = 1, Xq:size(1) do
+	print (self:update(Xq[i], Xp[i], y[i]))
+    end
 end
 
 function LSTMEncoder:similarity(s1, s2)

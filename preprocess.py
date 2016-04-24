@@ -20,8 +20,6 @@ def load_corpus(filename, word_dict):
     
     return np.array(corpus, dtype=np.int64)
 
-
-
 def load_words(filename):
     word_dict = {}
     embeddings = []
@@ -75,6 +73,26 @@ def load_training(filename):
     return np.array(qs, dtype=np.int64), \
         np.array(ps, dtype=np.int64), \
         np.array(Qs, dtype=np.int64)
+
+def structure_training(corpus, qs, ps, Qs):
+    Xq = []
+    Xp = []
+    y = []
+    for i, q in enumerate(qs):
+        for j, p in enumerate(ps[i]):
+            if p != 0:
+                Xq.append(corpus[q[0]])
+                Xp.append(corpus[p])
+                y.append(1)
+        for j, p in enumerate(Qs[i]):
+            if p != 0:
+                Xq.append(corpus[q[0]])
+                Xp.append(corpus[p])
+                y.append(-1)
+    return np.array(Xq, dtype=np.int64), \
+        np.array(Xp, dtype=np.int64),\
+        np.array(y, dtype=np.int64)
+        
             
 def get_index(word_dict, word):
     if word in word_dict:
@@ -86,6 +104,8 @@ if __name__ == '__main__':
     word_dict, embeddings = load_words(EMBEDDINGS)
     corpus = load_corpus(CORPUS, word_dict)
     qs, ps, Qs = load_training(TRAIN)
+    Xq, Xp, y = structure_training(corpus, qs, ps, Qs)
+    print Xq.shape, Xp.shape, y.shape
 
     with h5py.File('data/data.hdf5', 'w') as f:
         f['embeddings'] = embeddings
@@ -93,6 +113,9 @@ if __name__ == '__main__':
         f['qs'] = qs
         f['ps'] = ps
         f['Qs'] = Qs
+        f['Xq'] = Xq
+        f['Xp'] = Xp
+        f['y'] = y
         
 
     

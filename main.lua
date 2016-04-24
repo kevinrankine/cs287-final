@@ -17,12 +17,16 @@ function main()
     local qs = f:read('qs'):all():long()
     local ps = f:read('ps'):all():long()
     local Qs = f:read('Qs'):all():long()
+    local Xq = f:read('Xq'):all():long()
+    local Xp = f:read('Xp'):all():long()
+    local y = f:read('y'):all():long()
+    
     if opt.model == 'bow' then
 	model = models.CBOW(embeddings, corpus)
 	print (score_model(model, qs, ps, Qs))
     elseif opt.model == 'rnn' then
 	model = models.LSTMEncoder(embeddings, corpus, opt.d_hid, opt.eta, opt.cuda)
-	model:train(qs, ps, Qs)
+	model:train(Xq, Xp, y)
     end
 end
 
