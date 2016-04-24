@@ -1,6 +1,6 @@
 EncoderDecoder = torch.class('models.EncoderDecoder')
 
-function EncoderDecoder:__init(embeddings, corpus, d_hid, eta)
+function EncoderDecoder:__init(embeddings, corpus, d_hid, eta, gpu)
     self.corpus = corpus
     
     local nwords = embeddings:size(1)
@@ -15,20 +15,29 @@ function EncoderDecoder:__init(embeddings, corpus, d_hid, eta)
     self.eta = eta
 
     local encoder = nn.Sequential()
-    encoder:add(nn.LookupTable(nwords, d_in))
+    local LT = nn.LookupTable(nwords, d_in)
+    LT.weights = embeddings
+    encoder:add(LT)
     encoder:add(nn.SplitTable(1))
     encoder:add(nn.Sequencer(nn.GRU(d_in, d_hid)))
-    encoder:add(nn.Sequencer(nn.Linear(d_hid, d_hid)))
-    encoder:add(nn.Sequencer(nn.Tanh()))
     encoder:add(nn.SelectTable(-1))
     
 
     local decoder = nn.Sequential()
-    decoder:add(nn.GRU(d_hid, d_hid))
-    decoder:add(nn.Linear(d_hid, nwords))
+    decoder:add(LT:clone())
+    decoder:add(nn.SplitTable(1))
+    decoder:add(nn.Sequencer(nn.GRU(d_in, d_hid)))
+    decoder:add(nn.Sequencer(nn.Linear(d_hid, d_hid)))
+    decoder:add(nn.Join(1))
     decoder:add(nn.LogSoftMax())
 
     local criterion = nn.ClassNLLCriterion()
+
+    if gpu ~= 0 then
+       encoder:cuda()
+       decoder:cuda()
+       criterion:cuda()
+    end
 
     self.encoder = encoder
     self.decoder = decoder
@@ -56,19 +65,10 @@ function EncoderDecoder:update(sent)
     sent = sent:reshape(sent:size(1), 1)
     local hidden_state = self.encoder:forward(sent)
 
-    local outputs = torch.DoubleTensor(sent:size(1), self.nwords)
-    local hidden_states = torch.DoubleTensor(sent:size(1), self.d_hid)
-    hidden_states[1]:set(hidden_state)
-
-    for i = 1, sent:size(1) do
-	local out = self.decoder:forward(hidden_state)
-	if (i < sent:size(1)) then
-	    outputs[i] = out
-	end
-    end
+    local outputs = self.decoder:forward(sent)
     local loss = self.criterion:forward(outputs, sent:reshape(sent:size(1)))
     local grad_loss = self.criterion:backward(outputs, sent:reshape(sent:size(1)))
-    local grad_in = self.decoder:backward(hidden_state, grad_loss)
+    local grad_in = self.decoder:backward(sent, grad_loss)
     self.encoder:backward(sent, grad_in)
     self.decoder:updateParameters(self.eta)
     self.encoder:updateParameters(self.eta)

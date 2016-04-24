@@ -72,7 +72,9 @@ def load_training(filename):
     max_length = max(map(len, ps))
     ps = map(lambda x : x + [0] * (max_length - len(x)), ps)
     
-    return np.array(qs, dtype=np.int64), np.array(ps, dtype=np.int64), np.array(Qs, dtype=np.int64)
+    return np.array(qs, dtype=np.int64), \
+        np.array(ps, dtype=np.int64), \
+        np.array(Qs, dtype=np.int64)
             
 def get_index(word_dict, word):
     if word in word_dict:
