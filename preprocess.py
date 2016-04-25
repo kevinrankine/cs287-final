@@ -79,19 +79,16 @@ def structure_training(corpus, qs, ps, Qs):
     Xp = []
     y = []
     for i, q in enumerate(qs):
-        for j, p in enumerate(ps[i]):
-            if p != 0:
-                Xq.append(corpus[q[0]])
-                Xp.append(corpus[p])
-                y.append(1)
+        Xq.append(corpus[q[0]])
+        Xp.append(corpus[ps[i][0]])
+        y.append(1)
+        
         for j, p in enumerate(Qs[i]):
-            if p != 0:
-                Xq.append(corpus[q[0]])
-                Xp.append(corpus[p])
-                y.append(-1)
-    return np.array(Xq, dtype=np.int64), \
-        np.array(Xp, dtype=np.int64),\
-        np.array(y, dtype=np.int64)
+            Xq.append(corpus[q[0]])
+            Xp.append(corpus[p])
+            y.append(-1)
+        
+    return np.array(Xq, dtype=np.int64), np.array(Xq, dtype=np.int64), np.array(y, dtype=np.int64)
         
             
 def get_index(word_dict, word):

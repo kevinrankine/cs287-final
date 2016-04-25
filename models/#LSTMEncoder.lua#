@@ -19,7 +19,7 @@ function LSTMEncoder:__init(embeddings, corpus, d_hid, eta, gpu)
     local model = nn.Sequential()
     local encoder = nn.Sequential()
     
-    local LT = nn.LookupTable(nwords, d_in)
+    local LT = FixedokupTable(nwords, d_in)
     LT.weights = embeddings
     
     encoder:add(LT)
@@ -69,8 +69,8 @@ function LSTMEncoder:update(sent1, sent2, y)
 	sent1, sent2, y = sent1:cuda(), sent2:cuda(), y:cuda()
     end
     local out = self.model:forward({sent1, sent2})
+    print (out)
     local loss = self.criterion:forward(out, y)
-    print (loss)
     local grad_loss = self.criterion:backward(out, y)
     
     self.model:backward({sent1, sent2}, grad_loss)
@@ -79,7 +79,7 @@ function LSTMEncoder:update(sent1, sent2, y)
 end
 
 function LSTMEncoder:train(Xq, Xp, y)
-   local bsize = 101
+   local bsize = 256
     for i = 1, Xq:size(1), bsize do
        local loss = self:update(Xq:narrow(1, i, bsize),
 		   Xp:narrow(1, i, bsize),

@@ -1,6 +1,5 @@
 models = {}
 
-
 require('models.CBOW')
 require('models.LSTMEncoder')
 
