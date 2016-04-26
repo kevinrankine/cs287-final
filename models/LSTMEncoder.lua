@@ -79,7 +79,7 @@ function LSTMEncoder:update(qs, ps, y)
     local pos_scores = self.model:forward({pos_q, pos_p}):clone():expand(qs:size(1))
     local neg_scores = self.model:forward({qs, ps})
 
-    local loss = self.criterion:forward({pos_scores, neg_scores}, y:mul(-1))
+    local loss = self.criterion:forward({pos_scores, neg_scores})
     local grad_loss = self.criterion:backward({pos_scores, neg_scores}, y)
     
     self.model:backward({qs, ps}, grad_loss[2])
