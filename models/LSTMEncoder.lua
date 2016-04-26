@@ -19,20 +19,23 @@ function LSTMEncoder:__init(embeddings, corpus, d_hid, eta, gpu)
     local model = nn.Sequential()
     local encoder = nn.Sequential()
     
-    local LT = nn.LookupTable(nwords, d_in)
+    local LT = FixedLookupTable(nwords, d_in)
     LT.weights = embeddings
     
     encoder:add(LT)
     encoder:add(nn.SplitTable(2)) -- changed from 1
     encoder:add(nn.Sequencer(nn.GRU(d_in, d_hid)))
     encoder:add(nn.SelectTable(-1))
+    encoder:add(nn.Linear(d_hid, d_hid))
+    encoder:add(nn.Tanh())
 
     local PT = nn.ParallelTable()
 
     PT:add(encoder):add(encoder:clone())
-    model:add(PT)
+    model:add(PT):add(nn.CosineDistance())
+    model:remember('neither')
     
-    local criterion = nn.CosineEmbeddingCriterion(0.5)
+    local criterion = nn.MarginRankingCriterion()
 
     if gpu ~= 0 then
 	require('cutorch')
@@ -43,6 +46,8 @@ function LSTMEncoder:__init(embeddings, corpus, d_hid, eta, gpu)
 
     self.model = model
     self.model_params, self.model_grad_params = self.model:getParameters()
+    --self.model_params:rand(self.model_params:size(1)):add(-0.5)
+    --self.model_params:zero()
     self.criterion = criterion
 end
 
@@ -60,36 +65,53 @@ function LSTMEncoder:truncate(sent)
     return sent
 end
 
-function LSTMEncoder:update(sent1, sent2, y)
+function LSTMEncoder:update(qs, ps, y)
     self.model:forget()
     self.model_grad_params:zero()
-
-    --    sent1, sent2 = self:truncate(sent1), self:truncate(sent2)
-    if self.gpu ~= 0 then
-	sent1, sent2, y = sent1:cuda(), sent2:cuda(), y:cuda()
-    end
-    local out = self.model:forward({sent1, sent2})
-    local loss = self.criterion:forward(out, y)
-    print (loss)
-    local grad_loss = self.criterion:backward(out, y)
+    pos_q, pos_p = qs[1]:reshape(1, qs[1]:size(1)), ps[1]:reshape(1, ps[1]:size(1))
     
-    self.model:backward({sent1, sent2}, grad_loss)
+    qs, ps, y = qs:narrow(1, 2, qs:size(1) - 1), ps:narrow(1, 2, ps:size(1) - 1), y:narrow(1, 2, y:size(1) - 1)
+
+    if self.gpu ~= 0 then
+	qs, ps, y = qs:cuda(), ps:cuda(), y:cuda()
+    end
+    
+    local pos_scores = self.model:forward({pos_q, pos_p}):clone():expand(qs:size(1))
+    local neg_scores = self.model:forward({qs, ps})
+
+    local loss = self.criterion:forward({pos_scores, neg_scores}, y:mul(-1))
+    local grad_loss = self.criterion:backward({pos_scores, neg_scores}, y)
+    
+    self.model:backward({qs, ps}, grad_loss[2])
+    self.model:forward({pos_q, pos_p})
+    self.model:backward({pos_q, pos_p}, grad_loss[1]:sum(1))
+    
+    self:renorm_grad(5)
     self.model:updateParameters(self.eta)
     return loss
 end
 
 function LSTMEncoder:train(Xq, Xp, y)
-   local bsize = 101
+    local bsize = 21
     for i = 1, Xq:size(1), bsize do
-       local loss = self:update(Xq:narrow(1, i, bsize),
-		   Xp:narrow(1, i, bsize),
-		   y:narrow(1, i, bsize))
-	
-       print (i / Xq:size(1), loss)
+	local loss = self:update(Xq:narrow(1, i, bsize),
+				 Xp:narrow(1, i, bsize),
+				 y:narrow(1, i, bsize):double())
+	print (i / Xq:size(1), loss)
 	
     end
 end
 
+function LSTMEncoder:renorm_grad(thresh)
+    local norm = self.model_grad_params:norm()
+    
+    if (norm > thresh) then
+	self.model_grad_params:div(norm / thresh)
+    end
+end
+	
+
 function LSTMEncoder:similarity(s1, s2)
     local s1, s2 = self.corpus[s1 + 1], self.corpus[s2 + 1]
+    return 0
 end

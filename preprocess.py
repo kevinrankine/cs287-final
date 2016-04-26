@@ -81,14 +81,16 @@ def structure_training(corpus, qs, ps, Qs):
     for i, q in enumerate(qs):
         Xq.append(corpus[q[0]])
         Xp.append(corpus[ps[i][0]])
-        y.append(1)
+        y.append(-1)
         
         for j, p in enumerate(Qs[i]):
+            if j >= 20:
+                break
             Xq.append(corpus[q[0]])
             Xp.append(corpus[p])
-            y.append(-1)
+            y.append(1)
         
-    return np.array(Xq, dtype=np.int64), np.array(Xq, dtype=np.int64), np.array(y, dtype=np.int64)
+    return np.array(Xq, dtype=np.int64), np.array(Xp, dtype=np.int64), np.array(y, dtype=np.int64)
         
             
 def get_index(word_dict, word):
@@ -102,7 +104,6 @@ if __name__ == '__main__':
     corpus = load_corpus(CORPUS, word_dict)
     qs, ps, Qs = load_training(TRAIN)
     Xq, Xp, y = structure_training(corpus, qs, ps, Qs)
-    print Xq.shape, Xp.shape, y.shape
 
     with h5py.File('data/data.hdf5', 'w') as f:
         f['embeddings'] = embeddings
