@@ -35,7 +35,7 @@ function LSTMEncoder:__init(embeddings, corpus, d_hid, eta, gpu)
     model:add(PT):add(nn.CosineDistance())
     model:remember('neither')
     
-    local criterion = nn.MarginRankingCriterion()
+    local criterion = nn.MarginRankingCriterion(1)
 
     if gpu ~= 0 then
 	require('cutorch')
@@ -46,7 +46,7 @@ function LSTMEncoder:__init(embeddings, corpus, d_hid, eta, gpu)
 
     self.model = model
     self.model_params, self.model_grad_params = self.model:getParameters()
-    self.model_params:rand(self.model_params:size(1)):add(-0.5)
+    self.model_params:rand(self.model_params:size(1)):add(-0.5):div(10)
     --self.model_params:zero()
     self.criterion = criterion
 end
@@ -91,15 +91,24 @@ function LSTMEncoder:update(qs, ps, y)
     return loss
 end
 
-function LSTMEncoder:train(Xq, Xp, y)
-    local bsize = 21
-    for i = 1, Xq:size(1), bsize do
-	local loss = self:update(Xq:narrow(1, i, bsize),
-				 Xp:narrow(1, i, bsize),
-				 y:narrow(1, i, bsize):double())
-	print (i / Xq:size(1), loss)
-	
-    end
+function LSTMEncoder:train(Xq, Xp, y, nepochs)
+   local nepochs = nepochs or 1
+   local bsize = 21
+   for epoch = 1, nepochs do
+      local total_loss = 0
+      for i = 1, Xq:size(1), bsize do
+	 local loss = self:update(Xq:narrow(1, i, bsize),
+				  Xp:narrow(1, i, bsize),
+				  y:narrow(1, i, bsize))
+	 total_loss = total_loss + loss
+	 if torch.random(1, 20) == 20 then
+	    local pct = ((i / Xq:size(1)) * 100)
+	    print ("Epoch %d is %.3f percent done" % {epoch, pct})
+	 end
+      end
+      torch.save("model.dat", self.model)
+      print ("The loss after %d epochs is %.3f" % {epoch, total_loss})
+   end
 end
 
 function LSTMEncoder:renorm_grad(thresh)

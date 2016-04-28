@@ -28,7 +28,7 @@ function main()
 	print (score_model(model, qs, ps, Qs))
     elseif opt.model == 'rnn' then
 	model = models.LSTMEncoder(embeddings, corpus, opt.d_hid, opt.eta, opt.cuda)
-	model:train(Xq, Xp, y)
+	model:train(Xq, Xp, y, opt.nepochs)
     end
 end
 
