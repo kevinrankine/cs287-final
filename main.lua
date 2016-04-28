@@ -6,6 +6,7 @@ cmd = torch.CmdLine()
 cmd:option('-model', 'cbow', 'which model to use')
 cmd:option('-d_hid', 100, 'size of rnn hidden state')
 cmd:option('-eta', 1e-3, 'learning rate')
+cmd:option('-nepochs', 5, 'number of epochs of training')
 cmd:option('-cuda', 0, '1 if use GPU 0 o.w.')
 
 function main()
@@ -23,7 +24,7 @@ function main()
     
     if opt.model == 'cbow' then
 	model = models.CBOW(embeddings, corpus, opt.d_hid, opt.eta, opt.cuda)
-	model:train(Xq, Xp, y)
+	model:train(Xq, Xp, y, opt.nepochs)
 	print (score_model(model, qs, ps, Qs))
     elseif opt.model == 'rnn' then
 	model = models.LSTMEncoder(embeddings, corpus, opt.d_hid, opt.eta, opt.cuda)
@@ -32,23 +33,28 @@ function main()
 end
 
 function score_model(model, qs, ps, Qs)
-    local precision = 0.0
-    for i = 1, qs:size(1) do
-	local good = model:similarity(qs[i][1], ps[i][1])
-	local bad = 0
+   local precision = 0.0
+   for i = 1, qs:size(1) do
+      print (i / qs:size(1))
 
-	for j = 1, Qs[i]:size(1) do
-	    local score = model:similarity(qs[i][1], Qs[i][j])
-	    if score > bad then
-		bad = score
-	    end
-	end
-	if good > bad then
-	    precision = precision + 1
-	end
-    end
-    precision = precision / (qs:size(1))
-    return precision
+      local good = model:similarity(qs[i][1], ps[i][1])
+      local bad = 0
+
+      for j = 1, Qs[i]:size(1) do
+	 local score = model:similarity(qs[i][1], Qs[i][j])
+	 if score > bad then
+	    bad = score
+	 end
+      end
+      if good > bad then
+	 precision = precision + 1
+      end
+
+   end
+   
+   precision = precision / (qs:size(1))
+
+   return precision
 end
 
 main()

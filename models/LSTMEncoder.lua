@@ -31,7 +31,7 @@ function LSTMEncoder:__init(embeddings, corpus, d_hid, eta, gpu)
 
     local PT = nn.ParallelTable()
 
-    PT:add(encoder):add(encoder:clone())
+    PT:add(encoder):add(encoder:clone('weight', 'gradWeight', 'bias', 'gradBias'))
     model:add(PT):add(nn.CosineDistance())
     model:remember('neither')
     
@@ -46,7 +46,7 @@ function LSTMEncoder:__init(embeddings, corpus, d_hid, eta, gpu)
 
     self.model = model
     self.model_params, self.model_grad_params = self.model:getParameters()
-    --self.model_params:rand(self.model_params:size(1)):add(-0.5)
+    self.model_params:rand(self.model_params:size(1)):add(-0.5)
     --self.model_params:zero()
     self.criterion = criterion
 end
@@ -79,7 +79,7 @@ function LSTMEncoder:update(qs, ps, y)
     local pos_scores = self.model:forward({pos_q, pos_p}):clone():expand(qs:size(1))
     local neg_scores = self.model:forward({qs, ps})
 
-    local loss = self.criterion:forward({pos_scores, neg_scores})
+    local loss = self.criterion:forward({pos_scores, neg_scores}, y)
     local grad_loss = self.criterion:backward({pos_scores, neg_scores}, y)
     
     self.model:backward({qs, ps}, grad_loss[2])
