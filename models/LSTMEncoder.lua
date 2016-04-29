@@ -29,7 +29,7 @@ function LSTMEncoder:__init(embeddings, corpus, d_hid, eta, gpu, modelfile)
        LT.weights = embeddings
        
        encoder:add(LT)
-       encoder:add(nn.SplitTable(2)) -- changed from 1
+       encoder:add(nn.SplitTable(2))
        encoder:add(nn.Sequencer(nn.GRU(d_in, d_hid)))
        encoder:add(nn.SelectTable(-1))
        encoder:add(nn.Linear(d_hid, d_hid))

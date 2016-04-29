@@ -1,5 +1,7 @@
 import numpy as np
 import h5py
+import string
+import re
 
 CORPUS = 'data/text_tokenized.txt'
 EMBEDDINGS = 'data/vector/vectors_pruned.200.txt'
@@ -32,20 +34,12 @@ def load_words(filename):
             word_dict[word] = index + 1
             embeddings.append(embedding)
             
-    word_dict["''"] = len(word_dict) + 1
-    word_dict["/"] = len(word_dict) + 1
-    word_dict[","] = len(word_dict) + 1
-    word_dict["'s"] = len(word_dict) + 1
-    word_dict["'m"] = len(word_dict) + 1
+    word_dict[""] = len(word_dict) + 1
     word_dict["UNK"] = len(word_dict) + 1
     word_dict['END'] = len(word_dict) + 1
-    
-    embeddings.append(np.random.randn(200))
-    embeddings.append(np.random.randn(200))
-    embeddings.append(np.random.randn(200))
-    embeddings.append(np.random.randn(200))
-    embeddings.append(np.random.randn(200))
-    embeddings.append(np.random.randn(200))
+
+    embeddings.append(np.zeros(200))
+    embeddings.append(np.zeros(200))
     embeddings.append(np.zeros(200))
     
     return word_dict, np.array(embeddings, dtype=np.float32)
@@ -81,6 +75,7 @@ def structure_training(corpus, qs, ps, Qs):
     for i, q in enumerate(qs):
         Xq.append(corpus[q[0]])
         Xp.append(corpus[ps[i][0]])
+        print corpus[ps[i][1]]
         y.append(-1)
         
         for j, p in enumerate(Qs[i]):
@@ -94,6 +89,7 @@ def structure_training(corpus, qs, ps, Qs):
         
             
 def get_index(word_dict, word):
+    word = re.sub(r'\W+', '', word).lower()
     if word in word_dict:
         return word_dict[word]
     else:
@@ -104,6 +100,10 @@ if __name__ == '__main__':
     corpus = load_corpus(CORPUS, word_dict)
     qs, ps, Qs = load_training(TRAIN)
     Xq, Xp, y = structure_training(corpus, qs, ps, Qs)
+    
+    print ("corpus shape: ", corpus.shape)
+    print ("qs, ps, Qs shapes: ", qs.shape, ps.shape, Qs.shape)
+    print ("Xq, Xp, y shapes: ", Xq.shape, Xp.shape, y.shape)
 
     with h5py.File('data/data.hdf5', 'w') as f:
         f['embeddings'] = embeddings
