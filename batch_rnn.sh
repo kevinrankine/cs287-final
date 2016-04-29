@@ -12,4 +12,4 @@
 #SBATCH --nodes=1
 #SBATCH --tasks-per-node=1
 
-th main.lua -model rnn -nepochs 5 -eta 1e-3 -d_hid 100 -cuda 1
+th main.lua -model rnn -nepochs 10 -eta 1e-3 -d_hid 100 -cuda 1

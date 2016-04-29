@@ -1,4 +1,6 @@
 require('./FixedLookupTable')
+require('./MaxMarginCriterion')
+
 LSTMEncoder = torch.class('models.LSTMEncoder')
 
 function LSTMEncoder:__init(embeddings, corpus, d_hid, eta, gpu, modelfile)
@@ -43,7 +45,7 @@ function LSTMEncoder:__init(embeddings, corpus, d_hid, eta, gpu, modelfile)
        model:remember('neither')
     end
     
-    local criterion = nn.MarginRankingCriterion(1)
+    local criterion = nn.MaxMarginCriterion(1)
 
     if gpu ~= 0 then
 	model:cuda()
@@ -96,7 +98,7 @@ function LSTMEncoder:train(Xq, Xp, y, nepochs)
 	 print (pct, loss)
       end
       torch.save("model.dat", self.model)
-      print ("The loss after %d epochs is %.3f" % {epoch, total_loss})
+      print ("The loss after %d epochs is %.3f" % {epoch, total_loss / (Xq:size(1) / bsize)})
    end
 end
 

@@ -24,45 +24,61 @@ function main()
     local y = f:read('y'):all():double()
 
     if opt.cuda ~= 0 then
-       require('cutorch')
-       require('cunn')
+	require('cutorch')
+	require('cunn')
     end
     
     if opt.model == 'cbow' then
 	model = models.CBOW(embeddings, corpus, opt.d_hid, opt.eta, opt.cuda)
 	model:train(Xq, Xp, y, opt.nepochs)
-	print (score_model(model, qs, ps, Qs))
     elseif opt.model == 'rnn' then
 	model = models.LSTMEncoder(embeddings, corpus, opt.d_hid, opt.eta, opt.cuda, opt.modelfile)
-	--model:train(Xq, Xp, y, opt.nepochs)
-	print (score_model(model, qs, ps, Qs))
+	model:train(Xq, Xp, y, opt.nepochs)
     end
 end
 
 function score_model(model, qs, ps, Qs)
-   local precision = 0.0
-   for i = 1, qs:size(1) do
-      --print (i / qs:size(1))
+    local precision = 0.0
+    for i = 1, qs:size(1) do
+	--print (i / qs:size(1))
 
-      local good = model:similarity(qs[i][1], ps[i][1])
-      print ("Good: %.3f" % good)
-      local bad = 0
+	local good = model:similarity(qs[i][1], ps[i][1])
+	print ("Good: %.3f" % good)
+	local bad = 0
 
-      for j = 1, Qs[i]:size(1) do
-	 local score = model:similarity(qs[i][1], Qs[i][j])
-	 bad = bad + score/(Qs[i]:size(1))
-      end
-      print ("Bad: %.3f" % bad)
-      
-      if good > bad then
-	 precision = precision + 1
-      end
+	for j = 1, Qs[i]:size(1) do
+	    local score = model:similarity(qs[i][1], Qs[i][j])
+	    bad = bad + score/(Qs[i]:size(1))
+	end
+	print ("Bad: %.3f" % bad)
+	
+	if good > bad then
+	    precision = precision + 1
+	end
 
-   end
-   
-   precision = precision / (qs:size(1))
+    end
+    
+    precision = precision / (qs:size(1))
 
-   return precision
+    return precision
+end
+
+function MRR(model, qs, ps, Qs)
+    local mrr = 0.0
+    for i = 1, qs:size(1) do
+	local good_score = model:similarity(qs[i][1], ps[i][1])
+	local rank = 1
+
+	for j = 1, Qs[i]:size(1) do
+	    local bad_score = model:similarity(qs[i][1], Qs[i][j])
+	    if (bad_score > good_score) then
+		rank = rank + 1
+	    end
+	end
+	mrr = mrr + (1 / rank)
+    end
+    mrr = mrr / qs:size(1)
+    return mrr
 end
 
 main()
