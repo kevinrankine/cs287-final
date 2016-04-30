@@ -44,7 +44,7 @@ function LSTMEncoder:__init(embeddings, corpus, d_hid, eta, gpu, modelfile)
        model:remember('neither')
     end
     
-    local criterion = nn.MaxMarginCriterion(1)
+    local criterion = nn.MaxMarginCriterion(0.1)
 
     if gpu ~= 0 then
 	model:cuda()

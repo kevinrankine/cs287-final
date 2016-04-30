@@ -32,8 +32,10 @@ function MaxMarginCriterion:updateGradInput(input, y)
    
    self.gradInput[1]:zero()
    self.gradInput[2]:zero()
-   self.gradInput[1][self._max_index] = -y[self._max_index]
-   self.gradInput[2][self._max_index] = y[self._max_index]
+   if self.output > 0 then
+       self.gradInput[1][self._max_index] = -y[self._max_index]
+       self.gradInput[2][self._max_index] = y[self._max_index]
+   end
 
    return self.gradInput
 end
