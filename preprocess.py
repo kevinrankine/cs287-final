@@ -8,17 +8,18 @@ EMBEDDINGS = 'data/vector/vectors_pruned.200.txt'
 TRAIN = 'data/train_random.txt'
 
 def load_corpus(filename, word_dict):
-    corpus = [[0 for _ in range(38)] for _ in range(523751)]
+    corpus = [[] for _ in range(523751)]
     with open(filename) as f:
         for line in f:
             line = line.split('\t')
-            index, title = int(line[0]), map(lambda x : get_index(word_dict, x),
-                                             filter(lambda x : len(x) > 0,
-                                                    line[1][:-1].split(' ')))
+            index = int(line[0])
+            title = map(lambda x : word_dict[x],
+                        filter(lambda x : x in word_dict,
+                        line[1][:-1].split(' ')))
             corpus[index] = title
             
     max_length = max(map(len, corpus))
-    corpus = map(lambda x : x + [len(word_dict)] * (max_length - len(x)), corpus)
+    corpus = map(lambda x : x + [word_dict['END']] * (max_length - len(x)), corpus)
     
     return np.array(corpus, dtype=np.int64)
 
@@ -34,12 +35,7 @@ def load_words(filename):
             word_dict[word] = index + 1
             embeddings.append(embedding)
             
-    word_dict[""] = len(word_dict) + 1
-    word_dict["UNK"] = len(word_dict) + 1
     word_dict['END'] = len(word_dict) + 1
-
-    embeddings.append(np.zeros(200))
-    embeddings.append(np.zeros(200))
     embeddings.append(np.zeros(200))
     
     return word_dict, np.array(embeddings, dtype=np.float32)
@@ -73,27 +69,22 @@ def structure_training(corpus, qs, ps, Qs):
     Xp = []
     y = []
     for i, q in enumerate(qs):
-        Xq.append(corpus[q[0]])
-        Xp.append(corpus[ps[i][0]])
-        print corpus[ps[i][1]]
-        y.append(-1)
-        
-        for j, p in enumerate(Qs[i]):
-            if j >= 20:
+        for k, pp in enumerate(ps[i]):
+            if (ps[i][k] == 0):
                 break
             Xq.append(corpus[q[0]])
-            Xp.append(corpus[p])
-            y.append(1)
+            Xp.append(corpus[ps[i][k]])
+            y.append(-1)
+        
+            for j, p in enumerate(Qs[i]):
+                if j >= 20:
+                    break
+                Xq.append(corpus[q[0]])
+                Xp.append(corpus[p])
+                y.append(1)
         
     return np.array(Xq, dtype=np.int64), np.array(Xp, dtype=np.int64), np.array(y, dtype=np.int64)
-        
-            
-def get_index(word_dict, word):
-    word = re.sub(r'\W+', '', word).lower()
-    if word in word_dict:
-        return word_dict[word]
-    else:
-        return word_dict['UNK']
+
 
 if __name__ == '__main__':
     word_dict, embeddings = load_words(EMBEDDINGS)
@@ -101,9 +92,9 @@ if __name__ == '__main__':
     qs, ps, Qs = load_training(TRAIN)
     Xq, Xp, y = structure_training(corpus, qs, ps, Qs)
     
-    print ("corpus shape: ", corpus.shape)
-    print ("qs, ps, Qs shapes: ", qs.shape, ps.shape, Qs.shape)
-    print ("Xq, Xp, y shapes: ", Xq.shape, Xp.shape, y.shape)
+    print "corpus shape: ", corpus.shape
+    print "qs, ps, Qs shapes: ", qs.shape, ps.shape, Qs.shape
+    print "Xq, Xp, y shapes: ", Xq.shape, Xp.shape, y.shape
 
     with h5py.File('data/data.hdf5', 'w') as f:
         f['embeddings'] = embeddings

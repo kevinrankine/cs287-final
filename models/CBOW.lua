@@ -14,7 +14,7 @@ do
       local PT = nn.ParallelTable()
       
       local encoder = nn.Sequential()
-      encoder:add(LT):add(nn.Mean(2)):add(nn.Linear(200, 10))
+      encoder:add(LT):add(nn.Mean(2))
       
       PT:add(encoder):add(encoder:clone('weight', 'gradWeight', 'bias', 'gradBias'))
       self.model:add(PT)
@@ -37,12 +37,12 @@ do
       for epoch = 1, nepochs do
 	  local total_loss = 0
 	  for i = 1, Xq:size(1), bsize do
-	      loss = self:update(Xq:narrow(1, 1, bsize),
-				 Xp:narrow(1, 1 , bsize),
-				 y:narrow(1, 1, bsize))
+	      loss = self:update(Xq:narrow(1, i, bsize),
+				 Xp:narrow(1, i , bsize),
+				 y:narrow(1, i, bsize))
 	      
 	      total_loss = total_loss + loss
-	      print (loss)
+	      print (i / Xq:size(1))
 	  end
       end
    end

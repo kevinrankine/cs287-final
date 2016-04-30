@@ -40,8 +40,6 @@ end
 function score_model(model, qs, ps, Qs)
     local precision = 0.0
     for i = 1, qs:size(1) do
-	--print (i / qs:size(1))
-
 	local good = model:similarity(qs[i][1], ps[i][1])
 	print ("Good: %.3f" % good)
 	local bad = 0
