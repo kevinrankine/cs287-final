@@ -1,4 +1,3 @@
-require('./FixedLookupTable')
 require('./MaxMarginCriterion')
 
 LSTMEncoder = torch.class('models.LSTMEncoder')
@@ -25,7 +24,7 @@ function LSTMEncoder:__init(embeddings, corpus, d_hid, eta, gpu, modelfile)
        model = nn.Sequential()
        local encoder = nn.Sequential()
        
-       local LT = FixedLookupTable(nwords, d_in)
+       local LT = nn.LookupTable(nwords, d_in)
        LT.weights = embeddings
        
        encoder:add(LT)

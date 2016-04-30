@@ -66,8 +66,8 @@ do
    end
 
    function CBOW:similarity(s1, s2)
-      local s1 = self.corpus[s1 + 1]:reshape(1, 38)
-      local s2 = self.corpus[s2 + 1]:reshape(1, 38)
+       local s1 = self.corpus[s1 + 1]:reshape(1, self.corpus[s1 + 1]:size(1))
+       local s2 = self.corpus[s2 + 1]:reshape(1, self.corpus[s2 + 1]:size(1))
 
       if self.cuda > 0 then
 	 s1 = s1:cuda()

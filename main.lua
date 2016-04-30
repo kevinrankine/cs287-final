@@ -31,6 +31,7 @@ function main()
     if opt.model == 'cbow' then
 	model = models.CBOW(embeddings, corpus, opt.d_hid, opt.eta, opt.cuda)
 	model:train(Xq, Xp, y, opt.nepochs)
+	MRR_score(model, ps, qs, Qs)
     elseif opt.model == 'rnn' then
 	model = models.LSTMEncoder(embeddings, corpus, opt.d_hid, opt.eta, opt.cuda, opt.modelfile)
 	model:train(Xq, Xp, y, opt.nepochs)
@@ -61,7 +62,7 @@ function score_model(model, qs, ps, Qs)
     return precision
 end
 
-function MRR(model, qs, ps, Qs)
+function MRR_score(model, qs, ps, Qs)
     local mrr = 0.0
     for i = 1, qs:size(1) do
 	local good_score = model:similarity(qs[i][1], ps[i][1])
@@ -76,7 +77,7 @@ function MRR(model, qs, ps, Qs)
 	mrr = mrr + (1 / rank)
     end
     mrr = mrr / qs:size(1)
-    return mrr
+    print (mrr)
 end
 
 main()
