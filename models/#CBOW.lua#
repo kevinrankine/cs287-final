@@ -14,7 +14,7 @@ do
       local PT = nn.ParallelTable()
       
       local encoder = nn.Sequential()
-      encoder:add(LT):add(nn.Mean(2)):add(nn.Linear(200, 10))
+  encoder:add(LT):add(nn.Mean(2)):add(nn.Linear(200, 10))
       
       PT:add(encoder):add(encoder:clone('weight', 'gradWeight', 'bias', 'gradBias'))
       self.model:add(PT)
