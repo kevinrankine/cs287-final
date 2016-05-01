@@ -1,3 +1,5 @@
+require 'nn'
+
 local MaxMarginCriterion, Parent = torch.class('nn.MaxMarginCriterion', 
 					       'nn.Criterion')
 
@@ -32,9 +34,12 @@ function MaxMarginCriterion:updateGradInput(input, y)
    
    self.gradInput[1]:zero()
    self.gradInput[2]:zero()
+   
    if self.output > 0 then
-       self.gradInput[1][self._max_index] = -y[self._max_index]
-       self.gradInput[2][self._max_index] = y[self._max_index]
+       if y[self._max_index] == 1 then
+	   self.gradInput[1][self._max_index] = -y[self._max_index]
+	   self.gradInput[2][self._max_index] = y[self._max_index]
+       end
    end
 
    return self.gradInput

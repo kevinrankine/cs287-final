@@ -2,7 +2,7 @@ require('./MaxMarginCriterion')
 
 LSTMEncoder = torch.class('models.LSTMEncoder')
 
-function LSTMEncoder:__init(embeddings, corpus, d_hid, eta, gpu, modelfile)
+function LSTMEncoder:__init(model, embeddings, corpus, d_hid, eta, gpu, modelfile)
     self.corpus = corpus
     
     local nwords = embeddings:size(1)
@@ -29,18 +29,22 @@ function LSTMEncoder:__init(embeddings, corpus, d_hid, eta, gpu, modelfile)
        
        encoder:add(LT)
        encoder:add(nn.SplitTable(2))
+       encoder:add(nn.Sequencer(nn.Dropout(0.1)))
        encoder:add(nn.Sequencer(nn.GRU(d_in, d_hid)))
+       encoder:add(nn.Sequencer(nn.Dropout(0.1)))
        encoder:add(nn.SelectTable(-1))
-       encoder:add(nn.Linear(d_hid, d_hid))
-       encoder:add(nn.Tanh())
+       --encoder:add(nn.Linear(d_hid, d_hid))
+       --encoder:add(nn.Tanh())
 
        local PT = nn.ParallelTable()
+       local MLP1 = nn.Sequential():add(nn.Linear(2 * d_hid, 50)):add(nn.Tanh()):add(nn.Linear(50, 1))
 
        PT:add(encoder):add(encoder:clone('weight', 
 					 'gradWeight', 
 					 'bias', 
 					 'gradBias'))
-       model:add(PT):add(nn.CosineDistance())
+       --model:add(PT):add(nn.CosineDistance())
+       model:add(PT):add(nn.JoinTable(1)):add(MLP1)
        model:remember('neither')
     end
     
