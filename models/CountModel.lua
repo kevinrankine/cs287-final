@@ -1,3 +1,5 @@
+require('nn')
+
 do
    local CountModel = torch.class('models.CountModel')
    
@@ -7,6 +9,19 @@ do
       self.doc_counts = torch.LongTensor(corpus:size(1)) -- word -> # containing docs
       self.nwords = nwords
       self.idf = torch.DoubleTensor(nwords)
+      --[[
+      self.model = nn.Sequential()
+      local PT = nn.ParallelTable()
+      local idf_lookup = nn.LookupTable(nwords, 1)
+      local encoder = nn.Sequential():
+	  add(nn.ConcatTable():add(nn.Identity()):add(idf_lookup)):
+	  add(nn.SparseLinear(nwords, 200)):
+	  add(nn.Mean(1))
+      
+      PT:add(encoder):add(encoder:clone('weight', 'bias', 'gradWeight', 'gradBias'))
+      self.model:add(PT):add(nn.CosineDistance())
+      self.idf_lookup = idf_lookup
+      --]]
    end
 
    function CountModel:train()
@@ -27,6 +42,8 @@ do
        for word = 1, self.nwords do
 	   self.idf[word] = 1 + torch.log(ndocs / self.doc_counts[word])
        end
+       
+       --self.idf_lookup.weight = self.idf
    end
    
    function CountModel:similarity(s1, s2)
@@ -51,7 +68,6 @@ do
 	   vec2[s2[i]] = vec2[s2[i]] * self.idf[s2[i]]
        end
    
-
        return torch.dot(vec1, vec2) / (torch.norm(vec1) * torch.norm(vec2))
    end
 end

@@ -6,6 +6,7 @@ import re
 CORPUS = 'data/text_tokenized.txt'
 EMBEDDINGS = 'data/vector/vectors_pruned.200.txt'
 TRAIN = 'data/train_random.txt'
+DEV = 'data/dev.txt'
 
 def load_corpus(filename, word_dict):
     corpus = [[] for _ in range(523751)]
@@ -40,18 +41,24 @@ def load_words(filename):
     
     return word_dict, np.array(embeddings, dtype=np.float32)
 
-def load_training(filename):
+def load_training(filename, dev=False):
     qs = []
     ps = []
     Qs = []
     with open(filename, 'r') as f:
         for line in f:
-            q, p, Q = line.split('\t')
+            if dev:
+                q, p, Q, _ = line.split('\t')
+                print p.split(' ')
+            else:
+                q, p, Q = line.split('\t')
             
-            q = [int(q)]
-            p = map(int, p.split(' '))
-
-            Q = map(int, Q.split(' '))
+            try:
+                q = [int(q)]
+                p = map(int, p.split(' '))
+                Q = map(int, Q.split(' '))
+            except(ValueError):
+                continue
 
             qs.append(q)
             ps.append(p)
@@ -77,8 +84,8 @@ def structure_training(corpus, qs, ps, Qs):
             y.append(-1)
         
             for j, p in enumerate(Qs[i]):
-                if j >= 20:
-                    break
+                #if j >= 20:
+                #break
                 Xq.append(corpus[q[0]])
                 Xp.append(corpus[p])
                 y.append(1)
@@ -90,10 +97,12 @@ if __name__ == '__main__':
     word_dict, embeddings = load_words(EMBEDDINGS)
     corpus = load_corpus(CORPUS, word_dict)
     qs, ps, Qs = load_training(TRAIN)
+    dev_qs, dev_ps, dev_Qs = load_training(DEV, dev=True)
     Xq, Xp, y = structure_training(corpus, qs, ps, Qs)
     
     print "corpus shape: ", corpus.shape
     print "qs, ps, Qs shapes: ", qs.shape, ps.shape, Qs.shape
+    print "dev_qs, dev_ps, dev_Qs shapes: ", dev_qs.shape, dev_ps.shape, dev_Qs.shape
     print "Xq, Xp, y shapes: ", Xq.shape, Xp.shape, y.shape
 
     with h5py.File('data/data.hdf5', 'w') as f:
@@ -102,6 +111,9 @@ if __name__ == '__main__':
         f['qs'] = qs
         f['ps'] = ps
         f['Qs'] = Qs
+        f['dev_qs'] = dev_qs
+        f['dev_ps'] = dev_ps
+        f['dev_Qs'] = dev_Qs
         f['Xq'] = Xq
         f['Xp'] = Xp
         f['y'] = y
