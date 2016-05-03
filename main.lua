@@ -40,6 +40,7 @@ function main()
 	model = models.CountModel(embeddings:size(1), corpus)
 	model:train()
 	alt_MRR_score(model, dev_qs, dev_ps, dev_Qs)
+	alt_MRR_score(model, dev_qs, dev_ps, dev_Qs)
     elseif opt.model == 'cbow' then
 	model = models.CBOW(embeddings, corpus, opt.d_hid, opt.eta, opt.cuda)
 	if opt.train ~= 0 then

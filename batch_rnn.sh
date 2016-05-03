@@ -14,4 +14,4 @@
 
 #th main.lua -model rnn -nepochs 10 -eta 1e-3 -d_hid 200 -cuda 1
 #th main.lua -model rnn -cuda 1 -eta 5e-4 -d_hid 150 -nepochs 5 -margin 0.3
-th main.lua -model rnn -modelfile model4.dat -cuda 1 -eta 5e-4 -d_hid 150 -nepochs 5 -margin 0.3
+th main.lua -model rnn -cuda 1 -eta 1e-3 -d_hid 250 -nepochs 10 -margin 0.2

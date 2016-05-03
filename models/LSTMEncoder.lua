@@ -33,8 +33,6 @@ function LSTMEncoder:__init(model, embeddings, corpus, d_hid, eta, margin, gpu, 
        left_encoder:add(nn.Sequencer(nn.FastLSTM(d_in, d_hid)))
        left_encoder:add(nn.Sequencer(nn.Dropout(0.3)))
        left_encoder:add(nn.SelectTable(-1))
-       left_encoder:add(nn.Linear(d_hid, d_hid))
-       left_encoder:add(nn.Tanh())
 
        local PT = nn.ParallelTable()
        local right_encoder = left_encoder:clone('weight', 'bias', 'gradWeight', 'gradBias')
