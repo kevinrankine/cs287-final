@@ -39,7 +39,6 @@ function main()
     if opt.model == 'count' then
 	model = models.CountModel(embeddings:size(1), corpus)
 	model:train()
-	alt_MRR_score(model, dev_qs, dev_ps, dev_Qs)
     elseif opt.model == 'rnn' or opt.model == 'cbow' then
 	model = models.NeuralEncoder(opt.model, 
 				     embeddings, 
@@ -53,8 +52,9 @@ function main()
 	if opt.train ~= 0 then
 	    model:train(Xq, Xp, y, opt.nepochs, 'model.dat')
 	end
-	alt_MRR_score(model, dev_qs, dev_ps, dev_Qs)
     end
+    alt_MRR_score(model, dev_qs, dev_ps, dev_Qs)
+    
 end
 
 function MRR_score(model, Xq, Xp, ys)

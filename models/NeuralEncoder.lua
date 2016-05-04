@@ -25,6 +25,7 @@ function NeuralEncoder:__init(model_type,
     self.eta = eta
     self.gpu = gpu
     local model
+    local lookup_table
 
     if modelfile ~= '' then
        model = torch.load(modelfile)
@@ -32,21 +33,18 @@ function NeuralEncoder:__init(model_type,
        model = nn.Sequential()
        local left_encoder = nn.Sequential()
        
-       local lookup_table = FixedLookupTable(nwords, d_in)
-       lookup_table.weight:copy(embeddings)
+       lookup_table = FixedLookupTable(nwords, d_in)
 
        if model_type == 'rnn' then
-	   local lstm = nn.Sequencer(nn.FastLSTM(d_in, d_hid))
-	   lstm.weight:rand(lstm.weight:size()):add(-0.5):div(10)
+	   local lstm = nn.FastLSTM(d_in, d_hid)
 	   
 	   left_encoder:add(lookup_table)
 	   left_encoder:add(nn.SplitTable(2))
-	   left_encoder:add(lstm)
+	   left_encoder:add(nn.Sequencer(lstm))
 	   left_encoder:add(nn.Sequencer(nn.Dropout(0.3)))
 	   left_encoder:add(nn.SelectTable(-1))
        elseif model_type == 'cbow' then
-	   linear_layer = nn.Linear(d_in, d_hid)
-	   linear_layer.weight:rand(linear_layer.weight:size()):add(-0.5):div(1)
+	   local linear_layer = nn.Linear(d_in, d_hid)
 	   
 	   left_encoder:add(lookup_table)
 	   left_encoder:add(nn.Mean(2))
@@ -60,7 +58,6 @@ function NeuralEncoder:__init(model_type,
 						'gradWeight',
 						'gradBias')
        PT:add(left_encoder):add(right_encoder)
-       
        model:add(PT):add(nn.CosineDistance())
        model:remember('neither')
        
@@ -69,7 +66,7 @@ function NeuralEncoder:__init(model_type,
     end
     
     local criterion = nn.MaxMarginCriterion(margin)
-
+    
     if gpu ~= 0 then
 	model:cuda()
 	criterion:cuda()
@@ -78,6 +75,11 @@ function NeuralEncoder:__init(model_type,
     self.model = model
     self.model_params, self.model_grad_params = self.model:getParameters()
     self.criterion = criterion
+
+    if modelfile ~= '' then
+	self.model_params:rand(self.model_params:size()):add(-0.5):div(10)
+	lookup_table.weight:copy(embeddings)
+    end
 end
 
 function NeuralEncoder:update(qs, ps, y)
