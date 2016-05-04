@@ -40,7 +40,6 @@ function main()
 	model = models.CountModel(embeddings:size(1), corpus)
 	model:train()
 	alt_MRR_score(model, dev_qs, dev_ps, dev_Qs)
-	alt_MRR_score(model, dev_qs, dev_ps, dev_Qs)
     elseif opt.model == 'cbow' then
 	model = models.CBOW(embeddings, corpus, opt.d_hid, opt.eta, opt.cuda)
 	if opt.train ~= 0 then
@@ -86,14 +85,17 @@ function alt_MRR_score(model, qs, ps, Qs)
     end
     local mrr = 0.0
     local smrr = 0.0
-    local count = 1
+    local p_1 = 0
+
     for i = 1, qs:size(1) do
 	smrr = 0.0
+	local count = 0
 	for k = 1, ps[i]:size(1) do
 	    if (ps[i][k] == 0) then
 		break
 	    end
 	    
+	    count = count + 1
 	    local good_score = model:similarity(qs[i][1], ps[i][k])
 	    local rank = 1
 	    for j = 1, Qs[i]:size(1) do
@@ -103,10 +105,14 @@ function alt_MRR_score(model, qs, ps, Qs)
 	    end
 	    smrr = math.max(smrr, 1 / rank)
 	end
+	if smrr == 1 then
+	    p_1 = p_1 + 1
+	end
 	mrr = mrr + smrr
-	print (smrr)
+	print ("RR : %.3f, %d" % {smrr, count})
     end
-    print ("The MRR is %.3f" % (mrr / qs:size(1)))
+    print ("MRR : %.3f" % (mrr / qs:size(1)))
+    print ("P@1 : %.3f" % (p_1 / qs:size(1)))
 end
 
 main()

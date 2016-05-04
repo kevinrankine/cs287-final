@@ -9,19 +9,6 @@ do
       self.doc_counts = torch.LongTensor(corpus:size(1)):zero()
       self.nwords = nwords
       self.idf = torch.DoubleTensor(nwords):zero()
-      --[[
-      self.model = nn.Sequential()
-      local PT = nn.ParallelTable()
-      local idf_lookup = nn.LookupTable(nwords, 1)
-      local encoder = nn.Sequential():
-	  add(nn.ConcatTable():add(nn.Identity()):add(idf_lookup)):
-	  add(nn.SparseLinear(nwords, 200)):
-	  add(nn.Mean(1))
-      
-      PT:add(encoder):add(encoder:clone('weight', 'bias', 'gradWeight', 'gradBias'))
-      self.model:add(PT):add(nn.CosineDistance())
-      self.idf_lookup = idf_lookup
-      --]]
    end
 
    function CountModel:train()
@@ -49,9 +36,6 @@ do
 	       self.idf[word] = 1 + torch.log(ndocs / self.doc_counts[word])
 	   end
        end
-       print (self.idf:min(), self.idf:narrow(1, 1, self.nwords - 1):max(), self.idf:max())
-       
-       --self.idf_lookup.weight = self.idf
    end
    
    function CountModel:similarity(s1, s2)
@@ -64,17 +48,27 @@ do
        vec1:indexAdd(1, s1, torch.ones(s1:size(1)))
        vec2:indexAdd(1, s2, torch.ones(s2:size(1)))
 
-       vec1:narrow(1, 1, self.nwords - 1)
-       vec2:narrow(1, 1, self.nwords - 1)
+       vec1 = vec1:narrow(1, 1, self.nwords - 1)
+       vec2 = vec2:narrow(1, 1, self.nwords - 1)
        vec1:div(vec1:sum(1)[1])
        vec2:div(vec2:sum(1)[1])
        
        local ndocs = self.corpus:size(1)
-       
+
+       s1_set = {}
+       s2_set = {}
+
        for i = 1, s1:size(1) do
-	   vec1[s1[i]] = vec1[s1[i]] * self.idf[s1[i]]
-	   vec2[s2[i]] = vec2[s2[i]] * self.idf[s2[i]]
+	   if s1[i] < self.nwords and not s1_set[s1[i]]then
+	       vec1[s1[i]] = vec1[s1[i]] * self.idf[s1[i]]
+	       s1_set[s1[i]] = 1
+	   end
+	   if s2[i] < self.nwords and not s2_set[s2[i]] then
+	       vec2[s2[i]] = vec2[s2[i]] * self.idf[s2[i]]
+	       s2_set[s2[i]] = 1
+	   end
        end
+
 
        return torch.dot(vec1, vec2) / (torch.norm(vec1) * torch.norm(vec2))
    end
