@@ -40,16 +40,18 @@ function main()
 	model = models.CountModel(embeddings:size(1), corpus)
 	model:train()
 	alt_MRR_score(model, dev_qs, dev_ps, dev_Qs)
-    elseif opt.model == 'cbow' then
-	model = models.CBOW(embeddings, corpus, opt.d_hid, opt.eta, opt.cuda)
+    elseif opt.model == 'rnn' or opt.model == 'cbow' then
+	model = models.NeuralEncoder(opt.model, 
+				     embeddings, 
+				     corpus, 
+				     opt.d_hid, 
+				     opt.eta, 
+				     opt.margin, 
+				     opt.cuda, 
+				     opt.modelfile)
+	
 	if opt.train ~= 0 then
-	    model:train(Xq, Xp, y, opt.nepochs)
-	end
-	MRR_score(model, ps, qs, Qs)
-    elseif opt.model == 'rnn' then
-	model = models.LSTMEncoder(opt.model, embeddings, corpus, opt.d_hid, opt.eta, opt.margin, opt.cuda, opt.modelfile)
-	if opt.train ~= 0 then
-	    model:train(Xq, Xp, y, opt.nepochs, 'model4.dat')
+	    model:train(Xq, Xp, y, opt.nepochs, 'model.dat')
 	end
 	alt_MRR_score(model, dev_qs, dev_ps, dev_Qs)
     end

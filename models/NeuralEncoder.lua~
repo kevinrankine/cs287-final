@@ -1,9 +1,16 @@
 require('./MaxMarginCriterion')
 require('./FixedLookupTable')
 
-LSTMEncoder = torch.class('models.LSTMEncoder')
+NeuralEncoder = torch.class('models.NeuralEncoder')
 
-function LSTMEncoder:__init(model, embeddings, corpus, d_hid, eta, margin, gpu, modelfile)
+function NeuralEncoder:__init(model_type, 
+			      embeddings, 
+			      corpus, 
+			      d_hid, 
+			      eta, 
+			      margin, 
+			      gpu, 
+			      modelfile)
     self.corpus = corpus
     
     local nwords = embeddings:size(1)
@@ -25,29 +32,36 @@ function LSTMEncoder:__init(model, embeddings, corpus, d_hid, eta, margin, gpu, 
        model = nn.Sequential()
        local left_encoder = nn.Sequential()
        
-       local LT = FixedLookupTable(nwords, d_in)
-       LT.weights = embeddings
-       
-       left_encoder:add(LT)
-       left_encoder:add(nn.SplitTable(2))
-       left_encoder:add(nn.Sequencer(nn.FastLSTM(d_in, d_hid)))
-       left_encoder:add(nn.Sequencer(nn.Dropout(0.3)))
-       left_encoder:add(nn.SelectTable(-1))
+       local lookup_table = FixedLookupTable(nwords, d_in)
+       lookup_table.weight:copy(embeddings)
+
+       if model_type == 'rnn' then
+	   local lstm = nn.Sequencer(nn.FastLSTM(d_in, d_hid))
+	   lstm.weight:rand(lstm.weight:size()):add(-0.5):div(10)
+	   
+	   left_encoder:add(lookup_table)
+	   left_encoder:add(nn.SplitTable(2))
+	   left_encoder:add(lstm)
+	   left_encoder:add(nn.Sequencer(nn.Dropout(0.3)))
+	   left_encoder:add(nn.SelectTable(-1))
+       elseif model_type == 'cbow' then
+	   linear_layer = nn.Linear(d_in, d_hid)
+	   linear_layer.weight:rand(linear_layer.weight:size()):add(-0.5):div(10)
+	   
+	   left_encoder:add(lookup_table)
+	   left_encoder:add(nn.Mean(2))
+	   left_encoder:add(linear_layer)
+	   left_encoder:add(nn.Tanh())
+       end
 
        local PT = nn.ParallelTable()
-       local right_encoder = left_encoder:clone('weight', 'bias', 'gradWeight', 'gradBias')
+       local right_encoder = left_encoder:clone('weight', 
+						'bias', 
+						'gradWeight',
+						'gradBias')
        PT:add(left_encoder):add(right_encoder)
        
        model:add(PT):add(nn.CosineDistance())
-       --[[
-       local MLP1 = nn.Sequential()
-	   :add(nn.Linear(2 * d_hid, 100))
-	   :add(nn.Tanh())
-	   :add(nn.Linear(100, 1))
-	   :add(nn.Tanh())
-	   :add(nn.View(1))
-       model:add(PT):add(nn.JoinTable(2)):add(MLP1)
-       ]]--
        model:remember('neither')
        
        self.left_encoder = left_encoder
@@ -63,13 +77,10 @@ function LSTMEncoder:__init(model, embeddings, corpus, d_hid, eta, margin, gpu, 
     
     self.model = model
     self.model_params, self.model_grad_params = self.model:getParameters()
-    if modelfile == '' then
-	self.model_params:rand(self.model_params:size(1)):add(-0.5)
-    end
     self.criterion = criterion
 end
 
-function LSTMEncoder:update(qs, ps, y)
+function NeuralEncoder:update(qs, ps, y)
     self.model:forget()
     self.model_grad_params:zero()
     
@@ -95,20 +106,21 @@ function LSTMEncoder:update(qs, ps, y)
     return loss
 end
 
-function LSTMEncoder:train(Xq, Xp, y, nepochs, modelfile)
+function NeuralEncoder:train(Xq, Xp, y, nepochs, modelfile)
     self.model:training()
     local modelfile = modelfile or 'model.dat'
     local nepochs = nepochs or 1
-    local bsize = 101 -- 21
+    local bsize = 101
     for epoch = 1, nepochs do
 	local total_loss = 0
 	for i = 1, Xq:size(1), bsize do
-	    local idx = torch.randperm(100)
+	    local idx = torch.randperm(100):long()
+	    local normal_idx = torch.range(2, bsize):long()
 	    local xq, xp, yy = Xq:narrow(1, i, bsize), Xp:narrow(1, i, bsize), y:narrow(1, i, bsize)
 	    
-	    xq:indexCopy(1, torch.range(2, bsize):long(), xq:narrow(1, 2, bsize - 1):index(1, idx:long())) -- ????????
-	    xp:indexCopy(1, torch.range(2, bsize):long(), xp:narrow(1, 2, bsize - 1):index(1, idx:long())) -- ????????
-	    yy:indexCopy(1, torch.range(2, bsize):long(), yy:narrow(1, 2, bsize - 1):index(1, idx:long())) -- ????????
+	    xq:indexCopy(1, normal_idx, xq:narrow(1, 2, bsize - 1):index(1, idx)) 
+	    xp:indexCopy(1, normal_idx, xp:narrow(1, 2, bsize - 1):index(1, idx)) 
+	    yy:indexCopy(1, normal_idx, yy:narrow(1, 2, bsize - 1):index(1, idx))
 	    
 	    xq = xq:narrow(1, 1, 21)
 	    xp = xp:narrow(1, 1, 21)
@@ -124,7 +136,7 @@ function LSTMEncoder:train(Xq, Xp, y, nepochs, modelfile)
     end
 end
 
-function LSTMEncoder:renorm_grad(thresh)
+function NeuralEncoder:renorm_grad(thresh)
     local norm = self.model_grad_params:norm()
     
     if (norm > thresh) then
@@ -133,8 +145,9 @@ function LSTMEncoder:renorm_grad(thresh)
 end
 	
 
-function LSTMEncoder:similarity(s1, s2)
+function NeuralEncoder:similarity(s1, s2)
     local s1, s2 = self.corpus[s1 + 1]:reshape(1, 34):cuda(), self.corpus[s2 + 1]:reshape(1, 34):cuda()
     
     return self.model:forward({s1, s2})[1]
 end
+

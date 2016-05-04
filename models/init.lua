@@ -1,7 +1,6 @@
 models = {}
 
-require('models.CBOW')
-require('models.LSTMEncoder')
+require('models.NeuralEncoder')
 require('models.CountModel')
 
 

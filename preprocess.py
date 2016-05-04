@@ -20,7 +20,7 @@ def load_corpus(filename, word_dict):
             corpus[index] = title
             
     max_length = max(map(len, corpus))
-    corpus = map(lambda x : x + [word_dict['END']] * (max_length - len(x)), corpus)
+    corpus = map(lambda x : [word_dict['START']] * (max_length - len(x)) + x, corpus)
     
     return np.array(corpus, dtype=np.int64)
 
@@ -36,7 +36,7 @@ def load_words(filename):
             word_dict[word] = index + 1
             embeddings.append(embedding)
             
-    word_dict['END'] = len(word_dict) + 1
+    word_dict['START'] = len(word_dict) + 1
     embeddings.append(np.zeros(200))
     
     return word_dict, np.array(embeddings, dtype=np.float32)
@@ -49,7 +49,6 @@ def load_training(filename, dev=False):
         for line in f:
             if dev:
                 q, p, Q, _ = line.split('\t')
-                print p.split(' ')
             else:
                 q, p, Q = line.split('\t')
             
@@ -77,15 +76,13 @@ def structure_training(corpus, qs, ps, Qs):
     y = []
     for i, q in enumerate(qs):
         for k, pp in enumerate(ps[i]):
-            if (ps[i][k] == 0):
+            if (pp == 0):
                 break
             Xq.append(corpus[q[0]])
-            Xp.append(corpus[ps[i][k]])
+            Xp.append(corpus[pp])
             y.append(-1)
         
             for j, p in enumerate(Qs[i]):
-                #if j >= 20:
-                #break
                 Xq.append(corpus[q[0]])
                 Xp.append(corpus[p])
                 y.append(1)
