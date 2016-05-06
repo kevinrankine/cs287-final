@@ -45,7 +45,7 @@ function NeuralEncoder:__init(model_type,
 	   left_encoder:add(lookup_table)
 	   left_encoder:add(nn.SplitTable(2))
 	   left_encoder:add(nn.Sequencer(lstm))
-	   left_encoder:add(nn.Sequencer(nn.Dropout(0.3)))
+	   left_encoder:add(nn.Sequencer(nn.Dropout(0.1)))
 	   left_encoder:add(nn.SelectTable(-1))
        elseif model_type == 'cbow' then
 	   local linear_layer = nn.Linear(d_in, d_hid)
@@ -53,7 +53,6 @@ function NeuralEncoder:__init(model_type,
 	   left_encoder:add(lookup_table)
 	   left_encoder:add(nn.Mean(2))
 	   left_encoder:add(linear_layer)
-	   left_encoder:add(nn.Tanh())
        end
 
        local PT = nn.ParallelTable()
@@ -132,26 +131,22 @@ function NeuralEncoder:batch_update(xq, xp, yy)
     return loss
 end
 
-function NeuralEncoder:train(Xq, Xp, y, nepochs, modelfile)
+function NeuralEncoder:train(Xq, Xp, y, modelfile)
     self.model:training()
     local modelfile = modelfile or 'model.dat'
-    local nepochs = nepochs or 1
     local bsize = 101
     local nbatches = self.nbatches
     
-    for epoch = 1, nepochs do
-	local total_loss = 0
-	for i = 1, Xq:size(1), nbatches * bsize do
-	    local xq, xp, yy = self:batchify_inputs(Xp, Xq, y, i, nbatches)
-	    
-	    local loss = self:batch_update(xq, xp, yy)
-	    total_loss = total_loss + loss
-	    local pct = ((i / Xq:size(1)) * 100)
-	    --print (pct, loss)
-	end
-	torch.save(modelfile, self.model)
-	print ("The loss after %d epochs is %.3f" % {epoch, total_loss / (Xq:size(1) / (bsize * nbatches))})
+    local total_loss = 0
+    for i = 1, Xq:size(1), nbatches * bsize do
+	local xq, xp, yy = self:batchify_inputs(Xp, Xq, y, i, nbatches)
+	
+	local loss = self:batch_update(xq, xp, yy)
+	total_loss = total_loss + loss
     end
+    
+    torch.save(modelfile, self.model)
+    return total_loss / (Xq:size(1) / (bsize * nbatches))
 end
 
 function NeuralEncoder:renorm_grad(thresh)

@@ -63,9 +63,13 @@ function main()
 	    train_Xp = train_Xp:narrow(1, 1, delim)
 	    train_y = train_y:narrow(1, 1, delim)
 	    
-	    model:train(train_Xq, train_Xp, train_y, opt.nepochs, 'model.dat')
+	    MRR_score(model, dev_qs, dev_ps, dev_Qs)
+	    for epoch = 1, opt.nepochs do
+		local loss = model:train(train_Xq, train_Xp, train_y, 'model.dat')
+		print ("Loss after %d epochs: %.3f" % {epoch, loss})
+		MRR_score(model, dev_qs, dev_ps, dev_Qs)
+	    end
 	end
-	MRR_score(model, dev_qs, dev_ps, dev_Qs)
     end
 end
 
@@ -77,8 +81,8 @@ function MRR_score(model, qs, ps, Qs)
     local mrr = 0.0
     local p1 = 0.0
     for i = 1, qs:size(1)  do
-	local good_idx = ps[i]:add(1)
-	local bad_idx = Qs[i]:add(1)
+	local good_idx = ps[i]:clone():add(1)
+	local bad_idx = Qs[i]:clone():add(1)
 	
 	local num_good = 0
 	local num_bad = 20
