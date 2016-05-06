@@ -1,4 +1,5 @@
 require('./MaxMarginCriterion')
+require('./BatchedMaxMarginCriterion')
 require('./FixedLookupTable')
 
 NeuralEncoder = torch.class('models.NeuralEncoder')
@@ -10,7 +11,8 @@ function NeuralEncoder:__init(model_type,
 			      eta, 
 			      margin, 
 			      gpu, 
-			      modelfile)
+			      modelfile,
+			     nbatches)
     self.corpus = corpus
     
     local nwords = embeddings:size(1)
@@ -24,6 +26,8 @@ function NeuralEncoder:__init(model_type,
     self.end_padding = end_padding
     self.eta = eta
     self.gpu = gpu
+    self.nbatches = nbatches
+    
     local model
     local lookup_table
 
@@ -41,7 +45,7 @@ function NeuralEncoder:__init(model_type,
 	   left_encoder:add(lookup_table)
 	   left_encoder:add(nn.SplitTable(2))
 	   left_encoder:add(nn.Sequencer(lstm))
-	   --left_encoder:add(nn.Sequencer(nn.Dropout(0.3)))
+	   left_encoder:add(nn.Sequencer(nn.Dropout(0.3)))
 	   left_encoder:add(nn.SelectTable(-1))
        elseif model_type == 'cbow' then
 	   local linear_layer = nn.Linear(d_in, d_hid)
@@ -65,7 +69,7 @@ function NeuralEncoder:__init(model_type,
        self.right_encoder = right_encoder
     end
     
-    local criterion = nn.MaxMarginCriterion(margin)
+    local criterion = nn.BatchedMaxMarginCriterion(margin, self.nbatches)
     
     if gpu ~= 0 then
 	model:cuda()
@@ -133,17 +137,20 @@ function NeuralEncoder:train(Xq, Xp, y, nepochs, modelfile)
     local modelfile = modelfile or 'model.dat'
     local nepochs = nepochs or 1
     local bsize = 101
-    local nbatches = 5
+    local nbatches = self.nbatches
     
     for epoch = 1, nepochs do
 	local total_loss = 0
 	for i = 1, Xq:size(1), nbatches * bsize do
+	    if i > 10000 then
+		return
+	    end
 	    local xq, xp, yy = self:batchify_inputs(Xp, Xq, y, i, nbatches)
 	    
-	    --local loss = self:update(xq, xp, yy)
-	    --total_loss = total_loss + loss
-	    local pct = ((i / Xq:size(1)) * 100)
-	    print ("%.3f" % {loss})
+	    local loss = self:batch_update(xq, xp, yy)
+	    total_loss = total_loss + loss
+	    local pct = ((i / 10000) * 100)
+	    print (pct, loss)
 	end
 	torch.save(modelfile, self.model)
 	print ("The loss after %d epochs is %.3f" % {epoch, total_loss / (Xq:size(1) / bsize)})
