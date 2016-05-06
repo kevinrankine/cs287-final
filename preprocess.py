@@ -41,7 +41,7 @@ def load_words(filename):
     
     return word_dict, np.array(embeddings, dtype=np.float32)
 
-def load_training(filename, dev=False):
+def load_data(filename, dev=False):
     qs = []
     ps = []
     Qs = []
@@ -70,7 +70,7 @@ def load_training(filename, dev=False):
         np.array(ps, dtype=np.int64), \
         np.array(Qs, dtype=np.int64)
 
-def structure_training(corpus, qs, ps, Qs):
+def structure_data(corpus, qs, ps, Qs):
     Xq = []
     Xp = []
     y = []
@@ -92,27 +92,35 @@ def structure_training(corpus, qs, ps, Qs):
 if __name__ == '__main__':
     word_dict, embeddings = load_words(EMBEDDINGS)
     corpus = load_corpus(CORPUS, word_dict)
-    qs, ps, Qs = load_training(TRAIN)
-    dev_qs, dev_ps, dev_Qs = load_training(DEV, dev=True)
-    Xq, Xp, y = structure_training(corpus, qs, ps, Qs)
+    
+    train_qs, train_ps, train_Qs = load_data(TRAIN)
+    dev_qs, dev_ps, dev_Qs = load_data(DEV, dev=True)
+    train_Xq, train_Xp, train_y = structure_data(corpus, train_qs, train_ps, train_Qs)
+    dev_Xq, dev_Xp, dev_y = structure_data(corpus, dev_qs, dev_ps, dev_Qs)
     
     print "corpus shape: ", corpus.shape
-    print "qs, ps, Qs shapes: ", qs.shape, ps.shape, Qs.shape
+    print "train_qs, train_ps, train_Qs shapes: ", train_qs.shape, train_ps.shape, train_Qs.shape
     print "dev_qs, dev_ps, dev_Qs shapes: ", dev_qs.shape, dev_ps.shape, dev_Qs.shape
-    print "Xq, Xp, y shapes: ", Xq.shape, Xp.shape, y.shape
+    print "train_Xq, train_Xp, train_y shapes: ", train_Xq.shape, train_Xp.shape, train_y.shape
+    print "dev_Xq, dev_Xp, dev_y shapes: ", dev_Xq.shape, dev_Xp.shape, dev_y.shape
 
     with h5py.File('data/data.hdf5', 'w') as f:
         f['embeddings'] = embeddings
         f['corpus'] = corpus
-        f['qs'] = qs
-        f['ps'] = ps
-        f['Qs'] = Qs
+        f['train_qs'] = train_qs
+        f['train_ps'] = train_ps
+        f['train_Qs'] = train_Qs
         f['dev_qs'] = dev_qs
         f['dev_ps'] = dev_ps
         f['dev_Qs'] = dev_Qs
-        f['Xq'] = Xq
-        f['Xp'] = Xp
-        f['y'] = y
+        f['train_Xq'] = train_Xq
+        f['train_Xp'] = train_Xp
+        f['train_y'] = train_y
+        f['dev_Xq'] = dev_Xq
+        f['dev_Xp'] = dev_Xp
+        f['dev_y'] = dev_y
+
+        
         
 
     

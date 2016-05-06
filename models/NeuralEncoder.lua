@@ -142,18 +142,15 @@ function NeuralEncoder:train(Xq, Xp, y, nepochs, modelfile)
     for epoch = 1, nepochs do
 	local total_loss = 0
 	for i = 1, Xq:size(1), nbatches * bsize do
-	    if i > 10000 then
-		return
-	    end
 	    local xq, xp, yy = self:batchify_inputs(Xp, Xq, y, i, nbatches)
 	    
 	    local loss = self:batch_update(xq, xp, yy)
 	    total_loss = total_loss + loss
-	    local pct = ((i / 10000) * 100)
-	    print (pct, loss)
+	    local pct = ((i / Xq:size(1)) * 100)
+	    --print (pct, loss)
 	end
 	torch.save(modelfile, self.model)
-	print ("The loss after %d epochs is %.3f" % {epoch, total_loss / (Xq:size(1) / bsize)})
+	print ("The loss after %d epochs is %.3f" % {epoch, total_loss / (Xq:size(1) / (bsize * nbatches))})
     end
 end
 

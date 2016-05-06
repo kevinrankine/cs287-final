@@ -21,16 +21,20 @@ function main()
     local embeddings = f:read('embeddings'):all():double()
     local corpus = f:read('corpus'):all():long()
     
-    local qs = f:read('qs'):all():long()
-    local ps = f:read('ps'):all():long()
-    local Qs = f:read('Qs'):all():long()
+    local train_qs = f:read('train_qs'):all():long()
+    local train_ps = f:read('train_ps'):all():long()
+    local train_Qs = f:read('train_Qs'):all():long()
     local dev_qs = f:read('dev_qs'):all():long()
     local dev_ps = f:read('dev_ps'):all():long()
     local dev_Qs = f:read('dev_Qs'):all():long()
     
-    local Xq = f:read('Xq'):all():long()
-    local Xp = f:read('Xp'):all():long()
-    local y = f:read('y'):all():double()
+    local train_Xq = f:read('train_Xq'):all():long()
+    local train_Xp = f:read('train_Xp'):all():long()
+    local train_y = f:read('train_y'):all():double()
+
+    local dev_Xq = f:read('dev_Xq'):all():long()
+    local dev_Xp = f:read('dev_Xp'):all():long()
+    local dev_y = f:read('dev_y'):all():double()
 
     if opt.cuda ~= 0 then
 	require('cutorch')
@@ -39,7 +43,7 @@ function main()
     
     if opt.model == 'count' then
 	model = models.CountModel(embeddings:size(1), corpus)
-	model:train()
+	model:train(train_Xq, train_Xp, train_y)
     elseif opt.model == 'rnn' or opt.model == 'cbow' then
 	model = models.NeuralEncoder(opt.model, 
 				     embeddings, 
@@ -52,35 +56,63 @@ function main()
 				     opt.nbatches)
 	
 	if opt.train ~= 0 then
-	    model:train(Xq, Xp, y, opt.nepochs, 'model.dat')
+	    local num_ex = train_Xq:size(1) / 101
+	    local delim = math.floor(num_ex / opt.nbatches) * 101 * opt.nbatches
+	    
+	    train_Xq = train_Xq:narrow(1, 1, delim)
+	    train_Xp = train_Xp:narrow(1, 1, delim)
+	    train_y = train_y:narrow(1, 1, delim)
+	    
+	    model:train(train_Xq, train_Xp, train_y, opt.nepochs, 'model.dat')
 	end
+	MRR_score(model, dev_qs, dev_ps, dev_Qs)
     end
-    alt_MRR_score(model, dev_qs, dev_ps, dev_Qs)
-    
 end
 
-function MRR_score(model, Xq, Xp, ys)
-    local mrr = 0.0
-    local bsize = 21
-    model.model:evaluate()
+function MRR_score(model, qs, ps, Qs)
+    if model.model then
+	model.model:evaluate()
+    end
     
-    for i = 1, Xq:size(1), bsize  do
-	local good_score = model.model:forward({Xq[i]:reshape(1, Xq[i]:size(1)):cuda(), 
-						Xp[i]:reshape(1, Xp[i]:size(1)):cuda()})[1]
-	local rank = 1
+    local mrr = 0.0
+    local p1 = 0.0
+    for i = 1, qs:size(1)  do
+	local good_idx = ps[i]:add(1)
+	local bad_idx = Qs[i]:add(1)
+	
+	local num_good = 0
+	local num_bad = 20
+	for j = 1, ps[i]:size(1) do
+	    if ps[i][j] == 1 then
+		break
+	    end
+	    num_good = num_good + 1
+	end
 
-	local bad_scores = model.model:forward({Xp:narrow(1, i + 1, bsize - 1):cuda(), 
-					       Xq:narrow(1, i + 1, bsize - 1):cuda()})
+	good_idx = good_idx:narrow(1, 1, num_good)
+	local xq_good = model.corpus[qs[i][1] + 1]:reshape(1, 34):expand(num_good, 34)
+	local xp_good = model.corpus:index(1, good_idx)
+	local xq_bad = model.corpus[qs[i][1] + 1]:reshape(1, 34):expand(num_bad, 34)
+	local xp_bad = model.corpus:index(1, bad_idx)
+	
+	local good_score = model.model:forward({xq_good, xp_good}):max()
+	local bad_scores = model.model:forward({xq_bad, xp_bad})
+	local rank = 1
+	
 	for i = 1, bad_scores:size(1) do
 	    if good_score < bad_scores[i] then
 		rank = rank + 1
 	    end
 	end
-	mrr = mrr + (1 / rank)
-	print ("The MRR is %.3f" % (mrr / (i /bsize )))
+	if rank == 1 then
+	    p1 = p1 + 1
+	end
+	mrr = mrr + 1 / rank
     end
     mrr = mrr / qs:size(1)
-    print ("The MRR is %.3f" % mrr)
+    p1 = p1 / qs:size(1)
+    print ("MRR : %.3f" % mrr)
+    print ("P@1 : %.3f" % p1)
 end
 
 function alt_MRR_score(model, qs, ps, Qs)
