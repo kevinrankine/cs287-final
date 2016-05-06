@@ -89,7 +89,6 @@ def structure_training(corpus, qs, ps, Qs):
         
     return np.array(Xq, dtype=np.int64), np.array(Xp, dtype=np.int64), np.array(y, dtype=np.int64)
 
-
 if __name__ == '__main__':
     word_dict, embeddings = load_words(EMBEDDINGS)
     corpus = load_corpus(CORPUS, word_dict)
