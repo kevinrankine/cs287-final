@@ -10,6 +10,7 @@ cmd:option('-eta', 1e-3, 'learning rate')
 cmd:option('-nepochs', 5, 'number of epochs of training')
 cmd:option('-margin', 0.5, 'margin for the loss function')
 cmd:option('-nbatches', 1, 'number of examples in each batch')
+cmd:option('-dropout', 0, 'dropout value to use (0 if no dropout)')
 cmd:option('-cuda', 0, '1 if use GPU 0 o.w.')
 cmd:option('-modelfile', '' ,'File from which to load model')
 cmd:option('-train', 1, '1 if train the model 0 o.w.')
@@ -54,7 +55,8 @@ function main()
 				     opt.margin, 
 				     opt.cuda, 
 				     opt.modelfile,
-				     opt.nbatches)
+				     opt.nbatches,
+				     opt.dropout)
 	
 	if opt.train ~= 0 then
 	    local num_ex = train_Xq:size(1) / 101

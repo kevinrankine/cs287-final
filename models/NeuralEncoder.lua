@@ -1,5 +1,4 @@
 require('./MaxMarginCriterion')
-require('./BatchedMaxMarginCriterion')
 require('./FixedLookupTable')
 
 NeuralEncoder = torch.class('models.NeuralEncoder')
@@ -12,7 +11,8 @@ function NeuralEncoder:__init(model_type,
 			      margin, 
 			      gpu, 
 			      modelfile,
-			     nbatches)
+			     nbatches,
+			     dropout)
     self.corpus = corpus
     
     local nwords = embeddings:size(1)
@@ -27,6 +27,7 @@ function NeuralEncoder:__init(model_type,
     self.eta = eta
     self.gpu = gpu
     self.nbatches = nbatches
+    self.dropout = dropout
     
     local model
     local lookup_table
@@ -45,6 +46,9 @@ function NeuralEncoder:__init(model_type,
 	   left_encoder:add(nn.SplitTable(2))
 	   left_encoder:add(nn.Sequencer(lstm))
 	   left_encoder:add(nn.SelectTable(-1))
+	   if self.dropout > 0 then
+	       left_encoder:add(nn.Dropout(self.dropout))
+	   end
        elseif model_type == 'cbow' then
 	   left_encoder:add(lookup_table)
 	   left_encoder:add(nn.Mean(2))
@@ -63,7 +67,7 @@ function NeuralEncoder:__init(model_type,
        self.right_encoder = right_encoder
     end
     
-    local criterion = nn.BatchedMaxMarginCriterion(margin, self.nbatches)
+    local criterion = nn.MaxMarginCriterion(margin, self.nbatches)
     
     if gpu ~= 0 then
 	model:cuda()
