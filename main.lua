@@ -1,6 +1,7 @@
 require 'rnn'
 require 'hdf5'
 require 'models'
+require 'optim'
 
 cmd = torch.CmdLine()
 cmd:option('-model', 'count', 'which model to use (count, cbow, rnn, cnn)')

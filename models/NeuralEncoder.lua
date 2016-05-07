@@ -18,12 +18,12 @@ function NeuralEncoder:__init(model_type,
     local nwords = embeddings:size(1)
     local d_hid = d_hid
     local d_in = embeddings:size(2)
-    local end_padding = nwords
+    local start_padding = nwords
     
     self.nwords = nwords
     self.d_hid = d_hid
     self.d_in = d_in
-    self.end_padding = end_padding
+    self.start_padding = start_padding
     self.eta = eta
     self.gpu = gpu
     self.nbatches = nbatches
@@ -37,23 +37,17 @@ function NeuralEncoder:__init(model_type,
        model = nn.Sequential()
        local left_encoder = nn.Sequential()
        
-       lookup_table = nn.LookupTable(nwords, d_in)
+       lookup_table = FixedLookupTable(nwords, d_in)
 
        if model_type == 'rnn' then
-	   local lstm = nn.FastLSTM(d_in, d_hid)
-	   
+	   local lstm = nn.GRU(d_in, d_hid)
 	   left_encoder:add(lookup_table)
 	   left_encoder:add(nn.SplitTable(2))
 	   left_encoder:add(nn.Sequencer(lstm))
-	   left_encoder:add(nn.Sequencer(nn.Dropout(0.1)))
 	   left_encoder:add(nn.SelectTable(-1))
        elseif model_type == 'cbow' then
-	   --local linear_layer = nn.Linear(d_in, d_hid)
-	   
 	   left_encoder:add(lookup_table)
 	   left_encoder:add(nn.Mean(2))
-	   --left_encoder:add(linear_layer)
-	   --left_encoder:add(nn.Tanh())
        end
 
        local PT = nn.ParallelTable()
@@ -86,49 +80,29 @@ function NeuralEncoder:__init(model_type,
     end
 end
 
-function NeuralEncoder:update(qs, ps, y)
-    self.model:forget()
-    self.model_grad_params:zero()
-    
-    pos_q, pos_p = qs[1]:reshape(1, qs[1]:size(1)), ps[1]:reshape(1, ps[1]:size(1))
-    qs, ps, y = qs:narrow(1, 2, qs:size(1) - 1), ps:narrow(1, 2, ps:size(1) - 1), y:narrow(1, 2, y:size(1) - 1)
-
-    if self.gpu ~= 0 then
-	pos_q, pos_p, qs, ps, y = pos_q:cuda(), pos_p:cuda(), qs:cuda(), ps:cuda(), y:cuda()
-    end
-    
-    local pos_scores = self.model:forward({pos_q, pos_p}):clone():expand(qs:size(1)) -- want to make these one
-    local neg_scores = self.model:forward({qs, ps})
-
-    local loss = self.criterion:forward({pos_scores, neg_scores}, y)
-    local grad_loss = self.criterion:backward({pos_scores, neg_scores}, y)
-    
-    self.model:backward({qs, ps}, grad_loss[2])
-    self.model:forward({pos_q, pos_p})
-    self.model:backward({pos_q, pos_p}, grad_loss[1]:sum(1))
-    
-    self:renorm_grad(1)
-    self.model:updateParameters(self.eta)
-    return loss
-end
-
 function NeuralEncoder:batch_update(xq, xp, yy)
-    self.model:forget()
-    self.model_grad_params:zero()
+    function optim_func(params)
+	self.model_grad_params:zero()
+	self.model_params:copy(params)
+	if self.gpu ~= 0 then
+	    xq, xp, yy = xq:cuda(), xp:cuda(), yy:cuda()
+	end
 
-    if self.gpu ~= 0 then
-	xq, xp, yy = xq:cuda(), xp:cuda(), yy:cuda()
+	local scores = self.model:forward({xq, xp})
+
+	local loss = self.criterion:forward(scores, yy)
+	local grad_loss = self.criterion:backward(scores, yy)
+	
+	self.model:backward({xq, xp}, grad_loss)
+	
+	return loss, self.model_grad_params
     end
 
-    local scores = self.model:forward({xq, xp})
-
-    local loss = self.criterion:forward(scores, yy)
-    local grad_loss = self.criterion:backward(scores, yy)
-    
-    self.model:backward({xq, xp}, grad_loss)
-    
-    self:renorm_grad(1)
-    self.model:updateParameters(self.eta)
+    self.model_grad_params:zero()
+    local params, loss = optim.adam(optim_func, 
+				   self.model_params, 
+				   {learningRate = self.eta})
+    loss = loss[1]
     return loss
 end
 

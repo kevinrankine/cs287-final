@@ -1,64 +1,26 @@
-[?1034hMRR : 0.575	
-P@1 : 0.418	
-Loss after 1 epochs: 0.233	
-MRR : 0.585	
-P@1 : 0.429	
-Loss after 2 epochs: 0.225	
-MRR : 0.576	
-P@1 : 0.407	
-Loss after 3 epochs: 0.223	
-MRR : 0.576	
-P@1 : 0.407	
-Loss after 4 epochs: 0.223	
-MRR : 0.578	
-P@1 : 0.413	
-Loss after 5 epochs: 0.222	
-MRR : 0.576	
-P@1 : 0.413	
-Loss after 6 epochs: 0.222	
+[?1034hMRR : 0.553	
+P@1 : 0.376	
+Loss after 1 epochs: 0.251	
+MRR : 0.561	
+P@1 : 0.386	
+Loss after 2 epochs: 0.246	
+MRR : 0.563	
+P@1 : 0.397	
+Loss after 3 epochs: 0.245	
+MRR : 0.566	
+P@1 : 0.397	
+Loss after 4 epochs: 0.244	
+MRR : 0.572	
+P@1 : 0.402	
+Loss after 5 epochs: 0.242	
 MRR : 0.579	
-P@1 : 0.418	
-Loss after 7 epochs: 0.221	
-MRR : 0.583	
-P@1 : 0.429	
-Loss after 8 epochs: 0.220	
-MRR : 0.588	
-P@1 : 0.434	
-Loss after 9 epochs: 0.220	
-MRR : 0.589	
-P@1 : 0.434	
-Loss after 10 epochs: 0.219	
-MRR : 0.592	
-P@1 : 0.439	
-Loss after 11 epochs: 0.219	
-MRR : 0.593	
-P@1 : 0.439	
-Loss after 12 epochs: 0.218	
-MRR : 0.592	
-P@1 : 0.439	
-Loss after 13 epochs: 0.218	
-MRR : 0.590	
-P@1 : 0.434	
-Loss after 14 epochs: 0.217	
-MRR : 0.587	
-P@1 : 0.429	
-Loss after 15 epochs: 0.216	
-MRR : 0.590	
-P@1 : 0.429	
-Loss after 16 epochs: 0.215	
-MRR : 0.586	
+P@1 : 0.413	
+Loss after 6 epochs: 0.240	
+MRR : 0.584	
 P@1 : 0.423	
-Loss after 17 epochs: 0.214	
-MRR : 0.589	
-P@1 : 0.423	
-Loss after 18 epochs: 0.214	
-MRR : 0.591	
-P@1 : 0.429	
-Loss after 19 epochs: 0.212	
-MRR : 0.595	
-P@1 : 0.429	
-Loss after 20 epochs: 0.211	
-MRR : 0.590	
-P@1 : 0.423	
-MRR : 0.590	
-P@1 : 0.423	
+Loss after 7 epochs: 0.238	
+MRR : 0.597	
+P@1 : 0.450	
+Loss after 8 epochs: 0.235	
+MRR : 0.601	
+P@1 : 0.460	
