@@ -70,6 +70,7 @@ function main()
 		MRR_score(model, dev_qs, dev_ps, dev_Qs)
 	    end
 	end
+	MRR_score(model, dev_qs, dev_ps, dev_Qs)
     end
 end
 
@@ -87,7 +88,7 @@ function MRR_score(model, qs, ps, Qs)
 	local num_good = 0
 	local num_bad = 20
 	for j = 1, ps[i]:size(1) do
-	    if ps[i][j] == 1 then
+	    if ps[i][j] == 0 then
 		break
 	    end
 	    num_good = num_good + 1

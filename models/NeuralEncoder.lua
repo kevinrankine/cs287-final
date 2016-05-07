@@ -37,7 +37,7 @@ function NeuralEncoder:__init(model_type,
        model = nn.Sequential()
        local left_encoder = nn.Sequential()
        
-       lookup_table = FixedLookupTable(nwords, d_in)
+       lookup_table = nn.LookupTable(nwords, d_in)
 
        if model_type == 'rnn' then
 	   local lstm = nn.FastLSTM(d_in, d_hid)
@@ -48,11 +48,12 @@ function NeuralEncoder:__init(model_type,
 	   left_encoder:add(nn.Sequencer(nn.Dropout(0.1)))
 	   left_encoder:add(nn.SelectTable(-1))
        elseif model_type == 'cbow' then
-	   local linear_layer = nn.Linear(d_in, d_hid)
+	   --local linear_layer = nn.Linear(d_in, d_hid)
 	   
 	   left_encoder:add(lookup_table)
 	   left_encoder:add(nn.Mean(2))
-	   left_encoder:add(linear_layer)
+	   --left_encoder:add(linear_layer)
+	   --left_encoder:add(nn.Tanh())
        end
 
        local PT = nn.ParallelTable()
