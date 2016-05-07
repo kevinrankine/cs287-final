@@ -44,11 +44,12 @@ function NeuralEncoder:__init(model_type,
 	   local lstm = nn.GRU(d_in, d_hid)
 	   left_encoder:add(lookup_table)
 	   left_encoder:add(nn.SplitTable(2))
+	   if self.dropout > 0 then
+	       left_encoder:add(nn.Sequencer(nn.Dropout(self.dropout)))
+	   end
 	   left_encoder:add(nn.Sequencer(lstm))
 	   left_encoder:add(nn.SelectTable(-1))
-	   if self.dropout > 0 then
-	       left_encoder:add(nn.Dropout(self.dropout))
-	   end
+	   
        elseif model_type == 'cbow' then
 	   left_encoder:add(lookup_table)
 	   left_encoder:add(nn.Mean(2))

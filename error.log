@@ -1,1 +1,4 @@
-slurmstepd: error: *** JOB 61247528 ON holyseasgpu13 CANCELLED AT 2016-05-07T14:28:41 ***
+
+real	33m42.138s
+user	29m33.826s
+sys	1m53.809s
