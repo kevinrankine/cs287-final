@@ -12,7 +12,8 @@ function NeuralEncoder:__init(model_type,
 			      gpu, 
 			      modelfile,
 			     nbatches,
-			     dropout)
+			     dropout,
+			     kernel_width)
     self.corpus = corpus
     
     local nwords = embeddings:size(1)
@@ -37,20 +38,34 @@ function NeuralEncoder:__init(model_type,
     else
        model = nn.Sequential()
        local left_encoder = nn.Sequential()
-       
-       lookup_table = FixedLookupTable(nwords, d_in)
 
        if model_type == 'rnn' then
+	   lookup_table = FixedLookupTable(nwords, d_in)
 	   local lstm = nn.GRU(d_in, d_hid)
+	   
 	   left_encoder:add(lookup_table)
 	   left_encoder:add(nn.SplitTable(2))
+	   left_encoder:add(nn.Sequencer(lstm))
 	   if self.dropout > 0 then
 	       left_encoder:add(nn.Sequencer(nn.Dropout(self.dropout)))
 	   end
-	   left_encoder:add(nn.Sequencer(lstm))
 	   left_encoder:add(nn.SelectTable(-1))
+       elseif model_type == 'cnn' then
+	   lookup_table = FixedLookupTable(nwords, d_in)
 	   
+	   local conv = nn.Sequential():
+	       add(nn.TemporalConvolution(d_in, d_hid, kernel_width, 1)):
+	       add(nn.Tanh())
+	   if self.dropout > 0 then
+	       conv:add(nn.Dropout(self.dropout))
+	   end
+	   local pool = nn.Mean(2)
+	   left_encoder:add(lookup_table)
+	   left_encoder:add(conv)
+	   left_encoder:add(pool)
+
        elseif model_type == 'cbow' then
+	   lookup_table = nn.LookupTable(nwords, d_in)
 	   left_encoder:add(lookup_table)
 	   left_encoder:add(nn.Mean(2))
        end
@@ -119,6 +134,7 @@ function NeuralEncoder:train(Xq, Xp, y, modelfile)
     
     local total_loss = 0
     for i = 1, Xq:size(1), nbatches * bsize do
+	print (i / Xq:size(1))
 	local xq, xp, yy = self:batchify_inputs(Xp, Xq, y, i, nbatches)
 	
 	local loss = self:batch_update(xq, xp, yy)

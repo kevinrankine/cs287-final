@@ -11,6 +11,7 @@ cmd:option('-nepochs', 5, 'number of epochs of training')
 cmd:option('-margin', 0.5, 'margin for the loss function')
 cmd:option('-nbatches', 1, 'number of examples in each batch')
 cmd:option('-dropout', 0, 'dropout value to use (0 if no dropout)')
+cmd:option('-kernel_width', 3, 'kernel width for the CNN')
 cmd:option('-cuda', 0, '1 if use GPU 0 o.w.')
 cmd:option('-modelfile', '' ,'File from which to load model')
 cmd:option('-train', 1, '1 if train the model 0 o.w.')
@@ -46,7 +47,7 @@ function main()
     if opt.model == 'count' then
 	model = models.CountModel(embeddings:size(1), corpus)
 	model:train(train_Xq, train_Xp, train_y)
-    elseif opt.model == 'rnn' or opt.model == 'cbow' then
+    elseif opt.model == 'rnn' or opt.model == 'cbow' or opt.model == 'cnn' then
 	model = models.NeuralEncoder(opt.model, 
 				     embeddings, 
 				     corpus, 
@@ -56,7 +57,8 @@ function main()
 				     opt.cuda, 
 				     opt.modelfile,
 				     opt.nbatches,
-				     opt.dropout)
+				     opt.dropout,
+				     opt.kernel_width)
 	
 	if opt.train ~= 0 then
 	    local num_ex = train_Xq:size(1) / 101

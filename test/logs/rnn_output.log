@@ -1,0 +1,23 @@
+[?1034hMRR : 0.578	
+P@1 : 0.413	
+Loss after 1 epochs: 0.224	
+MRR : 0.592	
+P@1 : 0.429	
+Loss after 2 epochs: 0.186	
+MRR : 0.646	
+P@1 : 0.508	
+Loss after 3 epochs: 0.162	
+MRR : 0.652	
+P@1 : 0.508	
+Loss after 4 epochs: 0.149	
+MRR : 0.661	
+P@1 : 0.519	
+Loss after 5 epochs: 0.137	
+MRR : 0.667	
+P@1 : 0.529	
+Loss after 6 epochs: 0.130	
+MRR : 0.649	
+P@1 : 0.497	
+Loss after 7 epochs: 0.124	
+MRR : 0.668	
+P@1 : 0.524	
