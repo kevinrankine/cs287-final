@@ -12,4 +12,4 @@
 #SBATCH --nodes=1
 #SBATCH --tasks-per-node=1
 
-th main.lua -model cnn -cuda 1 -eta 3e-4 -d_hid 700 -nepochs 10 -margin 0.2 -nbatches 16 -kernel_width 3 -dropout 0.2 -to_file cnn.dat
+th main.lua -model cnn -cuda 1 -eta 1e-3 -d_hid 700 -nepochs 10 -margin 0.05 -nbatches 16 -pool last -kernel_width 3 -dropout 0.1 -to_file cnn.dat

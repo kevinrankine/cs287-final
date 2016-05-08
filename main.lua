@@ -11,6 +11,7 @@ cmd:option('-nepochs', 5, 'number of epochs of training')
 cmd:option('-margin', 0.5, 'margin for the loss function')
 cmd:option('-nbatches', 1, 'number of examples in each batch')
 cmd:option('-dropout', 0, 'dropout value to use (0 if no dropout)')
+cmd:option('-pool', 'last', 'state aggregation to use [mean or last]')
 cmd:option('-kernel_width', 3, 'kernel width for the CNN')
 cmd:option('-cuda', 0, '1 if use GPU 0 o.w.')
 cmd:option('-from_file', '' ,'File from which to load model')
@@ -59,7 +60,8 @@ function main()
 				     opt.from_file,
 				     opt.nbatches,
 				     opt.dropout,
-				     opt.kernel_width)
+				     opt.kernel_width,
+				     opt.pool)
 	
 	if opt.train ~= 0 then
 	    local num_ex = train_Xq:size(1) / 101

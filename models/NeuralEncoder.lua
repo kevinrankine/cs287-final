@@ -13,13 +13,15 @@ function NeuralEncoder:__init(model_type,
 			      modelfile,
 			     nbatches,
 			     dropout,
-			     kernel_width)
+			     kernel_width,
+			     pool)
     self.corpus = corpus
     
     local nwords = embeddings:size(1)
     local d_hid = d_hid
     local d_in = embeddings:size(2)
     local start_padding = nwords
+    local seq_len = 34
     
     self.nwords = nwords
     self.d_hid = d_hid
@@ -49,21 +51,38 @@ function NeuralEncoder:__init(model_type,
 	   if self.dropout > 0 then
 	       left_encoder:add(nn.Sequencer(nn.Dropout(self.dropout)))
 	   end
-	   left_encoder:add(nn.SelectTable(-1))
+	   if pool == 'last' then
+	       left_encoder:add(nn.SelectTable(-1))
+	   elseif pool == 'mean' then
+	       left_encoder:add(nn.JoinTable(2))
+	       left_encoder:add(nn.View(-1, seq_len, self.d_hid))
+	       left_encoder:add(nn.Mean(2))
+	   else
+	       error ("Incorrect pooling supplied")
+	   end
        elseif model_type == 'cnn' then
 	   lookup_table = FixedLookupTable(nwords, d_in)
 	   
-	   local conv = nn.Sequential():
+	   local conv_layer = nn.Sequential():
 	       add(nn.TemporalConvolution(d_in, d_hid, kernel_width, 1)):
 	       add(nn.Tanh())
+	   
 	   if self.dropout > 0 then
-	       conv:add(nn.Dropout(self.dropout))
+	       conv_layer:add(nn.Dropout(self.dropout))
 	   end
-	   local pool = nn.Mean(2)
+	   
+	   local pooling_layer
+	   if pool == 'mean' then
+	       pooling_layer = nn.Mean(2)
+	   elseif pool == 'last' then
+	       pooling_layer = nn.Max(2)
+	   else
+	       error ("Incorrect pooling supplied")
+	   end
+	   
 	   left_encoder:add(lookup_table)
-	   left_encoder:add(conv)
-	   left_encoder:add(pool)
-
+	   left_encoder:add(conv_layer)
+	   left_encoder:add(pooling_layer)
        elseif model_type == 'cbow' then
 	   lookup_table = nn.LookupTable(nwords, d_in)
 	   left_encoder:add(lookup_table)
