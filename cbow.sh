@@ -12,4 +12,4 @@
 #SBATCH --nodes=1
 #SBATCH --tasks-per-node=1
 
-th ../main.lua -model cbow -cuda 1 -eta 1e-3 -nepochs 5 -margin 0.2 -nbatches 16
+th main.lua -model cbow -cuda 1 -eta 1e-3 -nepochs 5 -margin 0.2 -nbatches 16

@@ -13,7 +13,8 @@ cmd:option('-nbatches', 1, 'number of examples in each batch')
 cmd:option('-dropout', 0, 'dropout value to use (0 if no dropout)')
 cmd:option('-kernel_width', 3, 'kernel width for the CNN')
 cmd:option('-cuda', 0, '1 if use GPU 0 o.w.')
-cmd:option('-modelfile', '' ,'File from which to load model')
+cmd:option('-from_file', '' ,'File from which to load model')
+cmd:option('-to_file', 'model.dat', 'File to save model to')
 cmd:option('-train', 1, '1 if train the model 0 o.w.')
 
 
@@ -55,7 +56,7 @@ function main()
 				     opt.eta, 
 				     opt.margin, 
 				     opt.cuda, 
-				     opt.modelfile,
+				     opt.from_file,
 				     opt.nbatches,
 				     opt.dropout,
 				     opt.kernel_width)
@@ -70,7 +71,7 @@ function main()
 	    
 	    MRR_score(model, dev_qs, dev_ps, dev_Qs)
 	    for epoch = 1, opt.nepochs do
-		local loss = model:train(train_Xq, train_Xp, train_y, 'model.dat')
+		local loss = model:train(train_Xq, train_Xp, train_y, opt.to_file)
 		print ("Loss after %d epochs: %.3f" % {epoch, loss})
 		MRR_score(model, dev_qs, dev_ps, dev_Qs)
 	    end

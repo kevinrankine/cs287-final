@@ -134,7 +134,6 @@ function NeuralEncoder:train(Xq, Xp, y, modelfile)
     
     local total_loss = 0
     for i = 1, Xq:size(1), nbatches * bsize do
-	print (i / Xq:size(1))
 	local xq, xp, yy = self:batchify_inputs(Xp, Xq, y, i, nbatches)
 	
 	local loss = self:batch_update(xq, xp, yy)
