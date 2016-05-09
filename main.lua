@@ -17,6 +17,8 @@ cmd:option('-cuda', 0, '1 if use GPU 0 o.w.')
 cmd:option('-from_file', '' ,'File from which to load model')
 cmd:option('-to_file', 'model.dat', 'File to save model to')
 cmd:option('-train', 1, '1 if train the model 0 o.w.')
+cmd:option('-body', 0, '1 if use body else 0')
+
 
 
 function main()
@@ -24,7 +26,8 @@ function main()
     local f = hdf5.open('data/data.hdf5', 'r')
     
     local embeddings = f:read('embeddings'):all():double()
-    local corpus = f:read('corpus'):all():long()
+    local title_corpus = f:read('title_corpus'):all():long()
+    local body_corpus = f:read('body_corpus'):all():long()
     
     local train_qs = f:read('train_qs'):all():long()
     local train_ps = f:read('train_ps'):all():long()
@@ -33,13 +36,22 @@ function main()
     local dev_ps = f:read('dev_ps'):all():long()
     local dev_Qs = f:read('dev_Qs'):all():long()
     
-    local train_Xq = f:read('train_Xq'):all():long()
-    local train_Xp = f:read('train_Xp'):all():long()
-    local train_y = f:read('train_y'):all():double()
+    local title_train_Xq = f:read('title_train_Xq'):all():long()
+    local title_train_Xp = f:read('title_train_Xp'):all():long()
+    local title_train_y = f:read('title_train_y'):all():double()
 
-    local dev_Xq = f:read('dev_Xq'):all():long()
-    local dev_Xp = f:read('dev_Xp'):all():long()
-    local dev_y = f:read('dev_y'):all():double()
+    local title_dev_Xq = f:read('title_dev_Xq'):all():long()
+    local title_dev_Xp = f:read('title_dev_Xp'):all():long()
+    local title_dev_y = f:read('title_dev_y'):all():double()
+    
+    local body_train_Xq = f:read('body_train_Xq'):all():long()
+    local body_train_Xp = f:read('body_train_Xp'):all():long()
+    local body_train_y = f:read('body_train_y'):all():double()
+
+    local body_dev_Xq = f:read('body_dev_Xq'):all():long()
+    local body_dev_Xp = f:read('body_dev_Xp'):all():long()
+    local body_dev_y = f:read('body_dev_y'):all():double()
+
 
     if opt.cuda ~= 0 then
 	require('cutorch')
@@ -48,11 +60,12 @@ function main()
     
     if opt.model == 'count' then
 	model = models.CountModel(embeddings:size(1), corpus)
-	model:train(train_Xq, train_Xp, train_y)
+	model:train(title_train_Xq, title_train_Xp, title_train_y)
     elseif opt.model == 'rnn' or opt.model == 'cbow' or opt.model == 'cnn' then
 	model = models.NeuralEncoder(opt.model, 
 				     embeddings, 
-				     corpus, 
+				     title_corpus, 
+				     body_corpus,
 				     opt.d_hid, 
 				     opt.eta, 
 				     opt.margin, 
@@ -61,28 +74,37 @@ function main()
 				     opt.nbatches,
 				     opt.dropout,
 				     opt.kernel_width,
-				     opt.pool)
+				     opt.pool,
+				     opt.body)
 	
 	if opt.train ~= 0 then
-	    local num_ex = train_Xq:size(1) / 101
+	    local num_ex = title_train_Xq:size(1) / 101
 	    local delim = math.floor(num_ex / opt.nbatches) * 101 * opt.nbatches
 	    
-	    train_Xq = train_Xq:narrow(1, 1, delim)
-	    train_Xp = train_Xp:narrow(1, 1, delim)
-	    train_y = train_y:narrow(1, 1, delim)
+	    title_train_Xq = title_train_Xq:narrow(1, 1, delim)
+	    title_train_Xp = title_train_Xp:narrow(1, 1, delim)
+	    title_train_y = title_train_y:narrow(1, 1, delim)
+
+	    body_train_Xq = body_train_Xq:narrow(1, 1, delim)
+	    body_train_Xp = body_train_Xp:narrow(1, 1, delim)
+	    body_train_y = body_train_y:narrow(1, 1, delim)
 	    
-	    MRR_score(model, dev_qs, dev_ps, dev_Qs)
+	    MRR_score(model, dev_qs, dev_ps, dev_Qs, opt.body)
 	    for epoch = 1, opt.nepochs do
-		local loss = model:train(train_Xq, train_Xp, train_y, opt.to_file)
+		local loss = model:train(title_train_Xq, 
+					 title_train_Xp, 
+					 title_train_y, 
+					 opt.to_file,
+					 body_train_Xq,
+					 body_train_Xq,
+					 body_train_y)
 		print ("Loss after %d epochs: %.3f" % {epoch, loss})
-		MRR_score(model, dev_qs, dev_ps, dev_Qs)
 	    end
 	end
-	MRR_score(model, dev_qs, dev_ps, dev_Qs)
     end
 end
 
-function MRR_score(model, qs, ps, Qs)
+function MRR_score(model, qs, ps, Qs, body)
     if model.model then
 	model.model:evaluate()
     end
@@ -103,13 +125,28 @@ function MRR_score(model, qs, ps, Qs)
 	end
 
 	good_idx = good_idx:narrow(1, 1, num_good)
-	local xq_good = model.corpus[qs[i][1] + 1]:reshape(1, 34):expand(num_good, 34)
-	local xp_good = model.corpus:index(1, good_idx)
-	local xq_bad = model.corpus[qs[i][1] + 1]:reshape(1, 34):expand(num_bad, 34)
-	local xp_bad = model.corpus:index(1, bad_idx)
-	
-	local good_score = model.model:forward({xq_good, xp_good}):max()
-	local bad_scores = model.model:forward({xq_bad, xp_bad})
+	if body == 0 then
+	    local title_xq_good = model.title_corpus[qs[i][1] + 1]:view(1, -1):expand(num_good, 34)
+	    local title_xp_good = model.title_corpus:index(1, good_idx)
+	    local title_xq_bad = model.title_corpus[qs[i][1] + 1]:view(1, -1):expand(num_bad, 34)
+	    local title_xp_bad = model.title_corpus:index(1, bad_idx)
+	    
+	    good_score = model.model:forward({title_xq_good, title_xp_good}):max()
+	    bad_scores = model.model:forward({title_xq_bad, title_xp_bad})
+	else
+	    local title_xq_good = model.title_corpus[qs[i][1] + 1]:view(1, -1):expand(num_good, 34)
+	    local title_xp_good = model.title_corpus:index(1, good_idx)
+	    local title_xq_bad = model.title_corpus[qs[i][1] + 1]:view(1, -1):expand(num_bad, 34)
+	    local title_xp_bad = model.title_corpus:index(1, bad_idx)
+
+	    local body_xq_good = model.body_corpus[qs[i][1] + 1]:view(1, -1):expand(num_good, 100)
+	    local body_xp_good = model.body_corpus:index(1, good_idx)
+	    body_xq_bad = model.body_corpus[qs[i][1] + 1]:view(1, -1):expand(num_bad, 100)
+	    body_xp_bad = model.body_corpus:index(1, bad_idx)
+	    
+	    good_score = model.model:forward({{title_xq_good, body_xq_good}, {title_xp_good, body_xp_good}}):max()
+	    bad_scores = model.model:forward({{title_xq_bad, title_xq_bad}, {title_xp_bad, body_xp_bad}})
+	end
 	local rank = 1
 	
 	for i = 1, bad_scores:size(1) do

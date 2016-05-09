@@ -9,20 +9,30 @@ TRAIN = 'data/train_random.txt'
 DEV = 'data/dev.txt'
 
 def load_corpus(filename, word_dict):
-    corpus = [[] for _ in range(523751)]
+    title_corpus = [[] for _ in range(523751)]
+    body_corpus = [[] for _ in range(523751)]
+    max_body_length = 100 # make this a parameter
+    
     with open(filename) as f:
         for line in f:
             line = line.split('\t')
             index = int(line[0])
             title = map(lambda x : word_dict[x],
                         filter(lambda x : x in word_dict,
-                        line[1][:-1].split(' ')))
-            corpus[index] = title
+                               line[1][:-1].split(' ')))
+            body = map(lambda x : word_dict[x],
+                       filter(lambda x : x in word_dict,
+                              line[2][:-1].split(' ')))[:max_body_length]
+            title_corpus[index] = title
+            body_corpus[index] = body
             
-    max_length = max(map(len, corpus))
-    corpus = map(lambda x : [word_dict['START']] * (max_length - len(x)) + x, corpus)
-    
-    return np.array(corpus, dtype=np.int64)
+    max_title_length = max(map(len, title_corpus))
+    padding = [word_dict['START'] for i in xrange(max_title_length)]
+    title_corpus = map(lambda x : padding[:max_title_length - len(x)] + x, title_corpus)
+    padding = [word_dict['START'] for i in xrange(max_body_length)]
+    body_corpus = map(lambda x : padding[:max_body_length - len(x)] + x, body_corpus)
+
+    return np.array(title_corpus, dtype=np.int64), np.array(body_corpus, dtype=np.int64)
 
 def load_words(filename):
     word_dict = {}
@@ -91,34 +101,53 @@ def structure_data(corpus, qs, ps, Qs):
 
 if __name__ == '__main__':
     word_dict, embeddings = load_words(EMBEDDINGS)
-    corpus = load_corpus(CORPUS, word_dict)
+    title_corpus, body_corpus = load_corpus(CORPUS, word_dict)
     
     train_qs, train_ps, train_Qs = load_data(TRAIN)
     dev_qs, dev_ps, dev_Qs = load_data(DEV, dev=True)
-    train_Xq, train_Xp, train_y = structure_data(corpus, train_qs, train_ps, train_Qs)
-    dev_Xq, dev_Xp, dev_y = structure_data(corpus, dev_qs, dev_ps, dev_Qs)
     
-    print "corpus shape: ", corpus.shape
+    title_train_Xq, title_train_Xp, title_train_y = structure_data(title_corpus, train_qs, train_ps, train_Qs)
+    title_dev_Xq, title_dev_Xp, title_dev_y = structure_data(title_corpus, dev_qs, dev_ps, dev_Qs)
+    body_train_Xq, body_train_Xp, body_train_y = structure_data(body_corpus, train_qs, train_ps, train_Qs)
+    body_dev_Xq, body_dev_Xp, body_dev_y = structure_data(body_corpus, dev_qs, dev_ps, dev_Qs)
+    
+    print "title corpus shape: ", title_corpus.shape
+    print "body corpus shape: ", body_corpus.shape
     print "train_qs, train_ps, train_Qs shapes: ", train_qs.shape, train_ps.shape, train_Qs.shape
     print "dev_qs, dev_ps, dev_Qs shapes: ", dev_qs.shape, dev_ps.shape, dev_Qs.shape
-    print "train_Xq, train_Xp, train_y shapes: ", train_Xq.shape, train_Xp.shape, train_y.shape
-    print "dev_Xq, dev_Xp, dev_y shapes: ", dev_Xq.shape, dev_Xp.shape, dev_y.shape
+    
+    print "title_train_Xq, title_train_Xp, title_train_y shapes: ", title_train_Xq.shape, title_train_Xp.shape, title_train_y.shape
+    print "title_dev_Xq, title_dev_Xp, title_dev_y shapes: ", title_dev_Xq.shape, title_dev_Xp.shape, title_dev_y.shape
+    
+    print "body_train_Xq, body_train_Xp, body_train_y shapes: ", body_train_Xq.shape, body_train_Xp.shape, body_train_y.shape
+    print "body_dev_Xq, body_dev_Xp, body_dev_y shapes: ", body_dev_Xq.shape, body_dev_Xp.shape, body_dev_y.shape
 
     with h5py.File('data/data.hdf5', 'w') as f:
         f['embeddings'] = embeddings
-        f['corpus'] = corpus
+        f['title_corpus'] = title_corpus
+        f['body_corpus'] = body_corpus
+        
         f['train_qs'] = train_qs
         f['train_ps'] = train_ps
         f['train_Qs'] = train_Qs
+        
         f['dev_qs'] = dev_qs
         f['dev_ps'] = dev_ps
         f['dev_Qs'] = dev_Qs
-        f['train_Xq'] = train_Xq
-        f['train_Xp'] = train_Xp
-        f['train_y'] = train_y
-        f['dev_Xq'] = dev_Xq
-        f['dev_Xp'] = dev_Xp
-        f['dev_y'] = dev_y
+        
+        f['title_train_Xq'] = title_train_Xq
+        f['title_train_Xp'] = title_train_Xp
+        f['title_train_y'] = title_train_y
+        f['title_dev_Xq'] = title_dev_Xq
+        f['title_dev_Xp'] = title_dev_Xp
+        f['title_dev_y'] = title_dev_y
+        
+        f['body_train_Xq'] = body_train_Xq
+        f['body_train_Xp'] = body_train_Xp
+        f['body_train_y'] = body_train_y
+        f['body_dev_Xq'] = body_dev_Xq
+        f['body_dev_Xp'] = body_dev_Xp
+        f['body_dev_y'] = body_dev_y
 
         
         

@@ -1,5 +1,4 @@
-require('./MaxMarginCriterion')
-require('./FixedLookupTable')
+ookupTable')
 
 NeuralEncoder = torch.class('models.NeuralEncoder')
 
@@ -112,9 +111,9 @@ function NeuralEncoder:__init(model_type,
 				  'bias', 
 				  'gradWeight',
 				  'gradBias')))
-	       :add(nn.JoinTable(1))
-	       :add(nn.View(-1, 2, self.d_hid))
-	   --	       :add(nn.Mean(3))
+	       :add(nn.JoinTable(2))
+	       :add(nn.View(-1, self.d_hid, 2))
+	       :add(nn.Mean(3))
 
 	   right_table:add(nn.ParallelTable():add(encoder:clone('weight', 
 				     'bias', 
@@ -124,9 +123,9 @@ function NeuralEncoder:__init(model_type,
 				  'bias', 
 				  'gradWeight',
 				  'gradBias')))
-			       :add(nn.JoinTable(1))
-			       :add(nn.View(-1, 2, self.d_hid))
-	       --:add(nn.Mean(3))
+			       :add(nn.JoinTable(2))
+			       :add(nn.View(-1, self.d_hid, 2))
+			       :add(nn.Mean(3))
 
 	   PT:add(left_table):add(right_table)
        end
@@ -156,7 +155,7 @@ function NeuralEncoder:batch_update(title_xq, title_xp, title_yy, body_xq, body_
     function optim_func(params)
 	self.model_grad_params:zero()
 	self.model_params:copy(params)
-	if self.body == 0 then
+	if not body_xq then
 	    if self.gpu ~= 0 then
 		xq, xp, yy = title_xq:cuda(), title_xp:cuda(), title_yy:cuda()
 	    end
@@ -165,9 +164,8 @@ function NeuralEncoder:batch_update(title_xq, title_xp, title_yy, body_xq, body_
 		xq, xp, yy = {title_xq:cuda(), body_xq:cuda()}, {title_xp:cuda(), body_xp:cuda()}, title_yy:cuda()
 	    end
 	end
-	print (xq[1]:size())
+	
 	local scores = self.model:forward({xq, xp})
-	print (scores:size())
 
 	local loss = self.criterion:forward(scores, yy)
 	local grad_loss = self.criterion:backward(scores, yy)
@@ -192,8 +190,8 @@ function NeuralEncoder:train(title_Xq, title_Xp, title_y, modelfile, body_Xq, bo
     local nbatches = self.nbatches
     
     local total_loss = 0
-    for i = 1, title_Xq:size(1), nbatches * bsize do
-	if self.body == 0 then
+    for i = 1, Xq:size(1), nbatches * bsize do
+	if not body_Xq then
 	    local title_xq, title_xp, title_yy = self:batchify_inputs(title_Xp, title_Xq, title_y, i, nbatches)
 	    local loss = self:batch_update(title_xq, title_xp, title_yy)
 	else
@@ -202,7 +200,7 @@ function NeuralEncoder:train(title_Xq, title_Xp, title_y, modelfile, body_Xq, bo
 	    local loss = self:batch_update(title_xq, title_xp, title_yy, body_xq, body_xp, body_yy)
 	end
 	
-	print (loss)
+	
 	total_loss = total_loss + loss
     end
     
