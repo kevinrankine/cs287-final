@@ -88,6 +88,7 @@ function NeuralEncoder:__init(model_type,
 	   encoder:add(conv_layer)
 	   encoder:add(pooling_layer)
        elseif model_type == 'cbow' then
+	   self.d_hid = d_in
 	   lookup_table = nn.LookupTable(nwords, d_in)
 	   encoder:add(lookup_table)
 	   encoder:add(nn.Mean(2))
@@ -112,9 +113,9 @@ function NeuralEncoder:__init(model_type,
 				  'bias', 
 				  'gradWeight',
 				  'gradBias')))
-	       :add(nn.JoinTable(1))
-	       :add(nn.View(-1, 2, self.d_hid))
-	   --	       :add(nn.Mean(3))
+	   :add(nn.JoinTable(2))
+	   :add(nn.View(-1, self.d_hid, 2))
+	   :add(nn.Mean(3))
 
 	   right_table:add(nn.ParallelTable():add(encoder:clone('weight', 
 				     'bias', 
@@ -124,10 +125,10 @@ function NeuralEncoder:__init(model_type,
 				  'bias', 
 				  'gradWeight',
 				  'gradBias')))
-			       :add(nn.JoinTable(1))
-			       :add(nn.View(-1, 2, self.d_hid))
-	       --:add(nn.Mean(3))
-
+	   :add(nn.JoinTable(2))
+	   :add(nn.View(-1, self.d_hid, 2))
+	   :add(nn.Mean(3))
+	   
 	   PT:add(left_table):add(right_table)
        end
        
@@ -152,22 +153,24 @@ function NeuralEncoder:__init(model_type,
     end
 end
 
-function NeuralEncoder:batch_update(title_xq, title_xp, title_yy, body_xq, body_xp)
+function NeuralEncoder:batch_update(title_xq, title_xp, yy, body_xq, body_xp)
     function optim_func(params)
 	self.model_grad_params:zero()
 	self.model_params:copy(params)
 	if self.body == 0 then
 	    if self.gpu ~= 0 then
-		xq, xp, yy = title_xq:cuda(), title_xp:cuda(), title_yy:cuda()
+		xq, xp, yy = title_xq:cuda(), title_xp:cuda(), yy:cuda()
+	    else
+		xq, xp, yy = title_xq, title_xp, yy
 	    end
 	else
 	    if self.gpu ~= 0 then
-		xq, xp, yy = {title_xq:cuda(), body_xq:cuda()}, {title_xp:cuda(), body_xp:cuda()}, title_yy:cuda()
+		xq, xp, yy = {title_xq:cuda(), body_xq:cuda()}, {title_xp:cuda(), body_xp:cuda()}, yy:cuda()
+	    else
+		xq, xp, yy = {title_xq, body_xq}, {title_xp, body_xp}, yy
 	    end
 	end
-	print (xq[1]:size())
 	local scores = self.model:forward({xq, xp})
-	print (scores:size())
 
 	local loss = self.criterion:forward(scores, yy)
 	local grad_loss = self.criterion:backward(scores, yy)
@@ -185,24 +188,24 @@ function NeuralEncoder:batch_update(title_xq, title_xp, title_yy, body_xq, body_
     return loss
 end
 
-function NeuralEncoder:train(title_Xq, title_Xp, title_y, modelfile, body_Xq, body_Xp, body_y)
+function NeuralEncoder:train(title_Xq, title_Xp, y, modelfile, body_Xq, body_Xp)
     self.model:training()
     local modelfile = modelfile or 'model.dat'
     local bsize = 101
     local nbatches = self.nbatches
     
     local total_loss = 0
+    local loss
     for i = 1, title_Xq:size(1), nbatches * bsize do
 	if self.body == 0 then
-	    local title_xq, title_xp, title_yy = self:batchify_inputs(title_Xp, title_Xq, title_y, i, nbatches)
-	    local loss = self:batch_update(title_xq, title_xp, title_yy)
+	    local title_xq, title_xp, title_yy = self:batchify_inputs(title_Xp, title_Xq, y, i, nbatches)
+	    loss = self:batch_update(title_xq, title_xp, title_yy)
 	else
-	    local title_xq, title_xp, title_yy = self:batchify_inputs(title_Xp, title_Xq, title_y, i, nbatches)
-	    local body_xq, body_xp, body_yy = self:batchify_inputs(body_Xp, body_Xq, body_y, i, nbatches)
-	    local loss = self:batch_update(title_xq, title_xp, title_yy, body_xq, body_xp, body_yy)
+	    local title_xq, title_xp, body_xq, body_xp, yy = self:batchify_inputs(title_Xp, title_Xq, y, i, nbatches, body_Xq, body_Xp)
+	    loss = self:batch_update(title_xq, title_xp, yy, body_xq, body_xp)
 	end
+	print (i / title_Xq:size(1))
 	
-	print (loss)
 	total_loss = total_loss + loss
     end
     
@@ -219,34 +222,59 @@ function NeuralEncoder:renorm_grad(thresh)
 end
 	
 
-function NeuralEncoder:batchify_inputs(Xq, Xp, y, index, nbatches)
+function NeuralEncoder:batchify_inputs(title_Xq, title_Xp, y, index, nbatches, body_Xq, body_Xp)
     local bsize = 101
     local normal_idx = torch.range(2, bsize):long()
-    local bxq, bxp, by
+    local title_bxq, title_bxp, body_bxq, body_bxp
     
     for b = 1, nbatches do
 	local idx = torch.randperm(100):long()
-	local xq, xp, yy = Xq:narrow(1, index + (b - 1) * bsize, bsize),  Xp:narrow(1, index + (b - 1) * bsize, bsize), y:narrow(1, index + (b - 1) * bsize, bsize)
+	local title_xq = title_Xq:narrow(1, index + (b - 1) * bsize, bsize)  
+	local title_xp = title_Xp:narrow(1, index + (b - 1) * bsize, bsize)
+	if self.body == 1 then
+	    body_xq = body_Xq:narrow(1, index + (b - 1) * bsize, bsize)  
+	    body_xp = body_Xp:narrow(1, index + (b - 1) * bsize, bsize)
+	end
+	local yy = y:narrow(1, index + (b - 1) * bsize, bsize)
 
-	xq:indexCopy(1, normal_idx, xq:narrow(1, 2, bsize - 1):index(1, idx)) 
-	xp:indexCopy(1, normal_idx, xp:narrow(1, 2, bsize - 1):index(1, idx)) 
+	title_xq:indexCopy(1, normal_idx, title_xq:narrow(1, 2, bsize - 1):index(1, idx)) 
+	title_xp:indexCopy(1, normal_idx, title_xp:narrow(1, 2, bsize - 1):index(1, idx)) 
+	if self.body == 1 then
+	    body_xq:indexCopy(1, normal_idx, body_xq:narrow(1, 2, bsize - 1):index(1, idx)) 
+	    body_xp:indexCopy(1, normal_idx, body_xp:narrow(1, 2, bsize - 1):index(1, idx)) 
+	end
 	yy:indexCopy(1, normal_idx, yy:narrow(1, 2, bsize - 1):index(1, idx))
 	
-	xq = xq:narrow(1, 1, 21)
-	xp = xp:narrow(1, 1, 21)
+	title_xq = title_xq:narrow(1, 1, 21)
+	title_xp = title_xp:narrow(1, 1, 21)
+	if self.body == 1 then
+	    body_xq = body_xq:narrow(1, 1, 21)
+	    body_xp = body_xp:narrow(1, 1, 21)
+	end
 	yy = yy:narrow(1, 1, 21)
 	
-	if bxq and bxp and by then
-	    bxq = torch.cat(bxq, xq, 1)
-	    bxp = torch.cat(bxp, xp, 1)
+	if title_bxq then
+	    title_bxq = torch.cat(title_bxq, title_xq, 1)
+	    title_bxp = torch.cat(title_bxp, title_xp, 1)
+	    if self.body == 1 then
+		body_bxq = torch.cat(body_bxq, body_xq, 1)
+		body_bxp = torch.cat(body_bxp, body_xp, 1)
+	    end
 	    by = torch.cat(by, yy, 1)
 	else
-	    bxq = xq
-	    bxp = xp
+	    title_bxq = title_xq
+	    title_bxp = title_xp
+	    if self.body == 1 then
+		body_bxq = body_xq
+		body_bxp = body_xp
+	    end
 	    by = yy
 	end
     end
-    
-    return bxq, bxp, by
+    if self.body == 1 then
+	return title_bxq, title_bxp, body_bxq, body_bxp, by
+    else
+	return title_bxq, title_bxp, by
+    end
 end
 

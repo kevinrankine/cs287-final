@@ -12,4 +12,4 @@
 #SBATCH --nodes=1
 #SBATCH --tasks-per-node=1
 
-th main.lua -model rnn -cuda 1 -eta 1e-3 -d_hid 280 -nepochs 5 -margin 0.05 -nbatches 16 -dropout 0.1 -pool mean -to_file gru.dat
+th main.lua -model rnn -cuda 1 -eta 1e-3 -d_hid 280 -nepochs 5 -margin 0.05 -nbatches 16 -dropout 0.1 -pool last -to_file gru.dat -body 1
