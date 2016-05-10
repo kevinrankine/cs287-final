@@ -12,7 +12,7 @@ TEST = 'data/test.txt'
 def load_corpus(filename, word_dict):
     title_corpus = [[] for _ in range(523751)]
     body_corpus = [[] for _ in range(523751)]
-    max_body_length = 50 # make this a parameter
+    max_body_length = 40 # make this a parameter
     
     with open(filename) as f:
         for line in f:
@@ -28,8 +28,8 @@ def load_corpus(filename, word_dict):
             body_corpus[index] = body
             
     max_title_length = max(map(len, title_corpus))
-    padding = [word_dict['START'] for i in xrange(max_title_length)]
-    title_corpus = map(lambda x : padding[:max_title_length - len(x)] + x, title_corpus)
+    padding = [word_dict['START'] for i in xrange(max_body_length)] # changed from max title length
+    title_corpus = map(lambda x : padding[:max_body_length - len(x)] + x, title_corpus)
     padding = [word_dict['START'] for i in xrange(max_body_length)]
     body_corpus = map(lambda x : padding[:max_body_length - len(x)] + x, body_corpus)
 

@@ -27,7 +27,7 @@ function NeuralEncoder:__init(model_type,
     local d_hid = d_hid
     local d_in = embeddings:size(2)
     local start_padding = nwords
-    local seq_len = 34
+    local seq_len = 40
     
     self.nwords = nwords
     self.d_hid = d_hid
@@ -180,7 +180,7 @@ function NeuralEncoder:batch_update(title_xq, title_xp, yy, body_xq, body_xp)
 	local grad_loss = self.criterion:backward(scores, yy)
 	
 	self.model:backward({xq, xp}, grad_loss)
-	--self:renorm_grad(5)
+	self:renorm_grad(10)
 	
 	return loss, self.model_grad_params
     end
@@ -214,7 +214,7 @@ function NeuralEncoder:train(title_Xq, title_Xp, y, modelfile, body_Xq, body_Xp)
 	total_loss = total_loss + loss
     end
     
-    torch.save(modelfile, self.model)
+    --torch.save(modelfile, self.model)
     return total_loss / (title_Xq:size(1) / (bsize * nbatches))
 end
 
