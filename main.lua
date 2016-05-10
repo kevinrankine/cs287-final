@@ -98,6 +98,7 @@ function main()
 					 body_train_Xq,
 					 body_train_Xq,
 					 body_train_y)
+		MRR_score(model, dev_qs, dev_ps, dev_Qs, opt.body)
 		print ("Loss after %d epochs: %.3f" % {epoch, loss})
 	    end
 	end
@@ -139,13 +140,13 @@ function MRR_score(model, qs, ps, Qs, body)
 	    local title_xq_bad = model.title_corpus[qs[i][1] + 1]:view(1, -1):expand(num_bad, 34)
 	    local title_xp_bad = model.title_corpus:index(1, bad_idx)
 
-	    local body_xq_good = model.body_corpus[qs[i][1] + 1]:view(1, -1):expand(num_good, 100)
+	    local body_xq_good = model.body_corpus[qs[i][1] + 1]:view(1, -1):expand(num_good, 50)
 	    local body_xp_good = model.body_corpus:index(1, good_idx)
-	    body_xq_bad = model.body_corpus[qs[i][1] + 1]:view(1, -1):expand(num_bad, 100)
-	    body_xp_bad = model.body_corpus:index(1, bad_idx)
+	    local body_xq_bad = model.body_corpus[qs[i][1] + 1]:view(1, -1):expand(num_bad, 50)
+	    local body_xp_bad = model.body_corpus:index(1, bad_idx)
 	    
 	    good_score = model.model:forward({{title_xq_good, body_xq_good}, {title_xp_good, body_xp_good}}):max()
-	    bad_scores = model.model:forward({{title_xq_bad, title_xq_bad}, {title_xp_bad, body_xp_bad}})
+	    bad_scores = model.model:forward({{title_xq_bad, body_xq_bad}, {title_xp_bad, body_xp_bad}})
 	end
 	local rank = 1
 	
@@ -185,7 +186,7 @@ function alt_MRR_score(model, qs, ps, Qs)
 	    local good_score = model:similarity(qs[i][1], ps[i][k])
 	    local rank = 1
 	    for j = 1, Qs[i]:size(1) do
-		if model:similarity(qs[i][1], Qs[i][j]) > good_score then
+		if model:similarity(qs[i][1], Qs[i][j]) >= good_score then
 		    rank = rank + 1
 		end
 	    end

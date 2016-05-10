@@ -17,6 +17,9 @@ function NeuralEncoder:__init(model_type,
 			     kernel_width,
 			     pool,
 			     body)
+    local seed = 2016
+    torch.manualSeed(seed)
+    
     self.title_corpus = title_corpus
     self.body_corpus = body_corpus
     
@@ -139,6 +142,7 @@ function NeuralEncoder:__init(model_type,
     local criterion = nn.MaxMarginCriterion(margin, self.nbatches)
     
     if gpu ~= 0 then
+	cutorch.manualSeedAll(seed)
 	model:cuda()
 	criterion:cuda()
     end
@@ -148,7 +152,7 @@ function NeuralEncoder:__init(model_type,
     self.criterion = criterion
 
     if modelfile == '' then
-	self.model_params:rand(self.model_params:size()):add(-0.5):div(10)
+	--self.model_params:rand(self.model_params:size()):add(-0.5):div(10)
 	lookup_table.weight:copy(embeddings)
     end
 end
@@ -176,11 +180,11 @@ function NeuralEncoder:batch_update(title_xq, title_xp, yy, body_xq, body_xp)
 	local grad_loss = self.criterion:backward(scores, yy)
 	
 	self.model:backward({xq, xp}, grad_loss)
+	--self:renorm_grad(5)
 	
 	return loss, self.model_grad_params
     end
 
-    self.model_grad_params:zero()
     local params, loss = optim.adam(optim_func, 
 				   self.model_params, 
 				   {learningRate = self.eta})
@@ -204,8 +208,9 @@ function NeuralEncoder:train(title_Xq, title_Xp, y, modelfile, body_Xq, body_Xp)
 	    local title_xq, title_xp, body_xq, body_xp, yy = self:batchify_inputs(title_Xp, title_Xq, y, i, nbatches, body_Xq, body_Xp)
 	    loss = self:batch_update(title_xq, title_xp, yy, body_xq, body_xp)
 	end
-	print (i / title_Xq:size(1))
-	
+	if torch.rand(1)[1] < 0.05 then
+	    print (i / title_Xq:size(1), loss)
+	end
 	total_loss = total_loss + loss
     end
     

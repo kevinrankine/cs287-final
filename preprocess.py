@@ -7,11 +7,12 @@ CORPUS = 'data/text_tokenized.txt'
 EMBEDDINGS = 'data/vector/vectors_pruned.200.txt'
 TRAIN = 'data/train_random.txt'
 DEV = 'data/dev.txt'
+TEST = 'data/test.txt'
 
 def load_corpus(filename, word_dict):
     title_corpus = [[] for _ in range(523751)]
     body_corpus = [[] for _ in range(523751)]
-    max_body_length = 100 # make this a parameter
+    max_body_length = 50 # make this a parameter
     
     with open(filename) as f:
         for line in f:
