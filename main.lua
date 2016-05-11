@@ -110,7 +110,7 @@ function MRR_score(model, qs, ps, Qs, body)
 	model.model:evaluate()
     end
 
-    local seq_len = 40
+    local seq_len = 34
     
     local mrr = 0.0
     local p1 = 0.0

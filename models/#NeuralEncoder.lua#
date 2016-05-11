@@ -62,7 +62,6 @@ function NeuralEncoder:__init(model_type,
 	   if pool == 'last' then
 	       encoder:add(nn.SelectTable(-1))
 	   elseif pool == 'mean' then
-	       encoder:add(nn.Sequencer(nn.Normalize(2)))
 	       encoder:add(nn.JoinTable(2))
 	       encoder:add(nn.View(-1, seq_len, self.d_hid))
 	       encoder:add(nn.Mean(2))
@@ -111,28 +110,29 @@ function NeuralEncoder:__init(model_type,
 	   
 
 	   left_table:add(nn.ParallelTable():add(encoder:clone('weight', 
-				  'bias', 
-				  'gradWeight',
-				  'gradBias'))
-	       :add(encoder:clone('weight', 
+							       'bias', 
+							       'gradWeight',
+							       'gradBias'))
+			      :add(encoder:clone('weight', 
+						 'bias', 
+						 'gradWeight',
+						 'gradBias')))
+	       :add(nn.JoinTable(2))
+	       :add(nn.View(-1, self.d_hid * 2))
+	       --:add(nn.View(-1, self.d_hid, 2))
+	       --:add(nn.Mean(3))
+
+	   right_table:add(nn.ParallelTable():add(encoder:clone('weight', 
+				     'bias', 
+				     'gradWeight',
+				     'gradBias'))
+			       :add(encoder:clone('weight', 
 				  'bias', 
 				  'gradWeight',
 				  'gradBias')))
-	       :add(nn.JoinTable(2))
-	       :add(nn.View(-1, self.d_hid, 2))
-	       :add(nn.Mean(3))
-
-	   right_table:add(nn.ParallelTable():add(encoder:clone('weight', 
-								'bias', 
-								'gradWeight',
-								'gradBias'))
-			       :add(encoder:clone('weight', 
-						  'bias', 
-						  'gradWeight',
-						  'gradBias')))
-	       :add(nn.JoinTable(2))
-	       :add(nn.View(-1, self.d_hid, 2))
-	       :add(nn.Mean(3))
+	   :add(nn.JoinTable(2))
+	       --:add(nn.View(-1, self.d_hid, 2))
+	       --:add(nn.Mean(3))
 	   
 	   PT:add(left_table):add(right_table)
        end

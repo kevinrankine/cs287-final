@@ -12,7 +12,7 @@ TEST = 'data/test.txt'
 def load_corpus(filename, word_dict):
     title_corpus = [[] for _ in range(523751)]
     body_corpus = [[] for _ in range(523751)]
-    max_body_length = 40 # make this a parameter
+    max_body_length = 34 # make this a parameter
     
     with open(filename) as f:
         for line in f:
