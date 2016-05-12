@@ -1,3 +1,4 @@
+require 'nngraph'
 require 'rnn'
 require 'hdf5'
 require 'models'
@@ -59,7 +60,7 @@ function main()
     end
     
     if opt.model == 'count' then
-	model = models.CountModel(embeddings:size(1), corpus)
+	model = models.CountModel(embeddings:size(1), title_corpus)
 	model:train(title_train_Xq, title_train_Xp, title_train_y)
     elseif opt.model == 'rnn' or opt.model == 'cbow' or opt.model == 'cnn' then
 	model = models.NeuralEncoder(opt.model, 
@@ -89,7 +90,7 @@ function main()
 	    body_train_Xp = body_train_Xp:narrow(1, 1, delim)
 	    body_train_y = body_train_y:narrow(1, 1, delim)
 	    
-	    MRR_score(model, dev_qs, dev_ps, dev_Qs, opt.body)
+	    score(model, dev_qs, dev_ps, dev_Qs, opt.body)
 	    for epoch = 1, opt.nepochs do
 		local loss = model:train(title_train_Xq, 
 					 title_train_Xp, 
@@ -98,14 +99,14 @@ function main()
 					 body_train_Xq,
 					 body_train_Xq,
 					 body_train_y)
-		MRR_score(model, dev_qs, dev_ps, dev_Qs, opt.body)
+		score(model, dev_qs, dev_ps, dev_Qs, opt.body)
 		print ("Loss after %d epochs: %.3f" % {epoch, loss})
 	    end
 	end
     end
 end
 
-function MRR_score(model, qs, ps, Qs, body)
+function score(model, qs, ps, Qs, body)
     if model.model then
 	model.model:evaluate()
     end

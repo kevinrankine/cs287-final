@@ -61,6 +61,7 @@ function NeuralEncoder:__init(model_type,
 	   
 	   if pool == 'last' then
 	       encoder:add(nn.SelectTable(-1))
+	       encoder:add(nn.Normalize(2)) -- NEW
 	   elseif pool == 'mean' then
 	       encoder:add(nn.Sequencer(nn.Normalize(2)))
 	       encoder:add(nn.JoinTable(2))
@@ -95,8 +96,12 @@ function NeuralEncoder:__init(model_type,
        elseif model_type == 'cbow' then
 	   self.d_hid = d_in
 	   lookup_table = nn.LookupTable(nwords, d_in)
+	   local importance_gate = nn.LookupTable(nwords, 1)
+	   
 	   encoder:add(lookup_table)
 	   encoder:add(nn.Mean(2))
+       elseif model_type == 'cbow++' then
+	   print ("NOT IMPLEMENTED")
        end
        
        local PT = nn.ParallelTable()
@@ -108,28 +113,25 @@ function NeuralEncoder:__init(model_type,
        else
 	   local left_table = nn.Sequential()
 	   local right_table = nn.Sequential()
+
+	   local title_encoder = encoder
+	   local body_encoder = encoder:clone() -- doesn't share params
 	   
 
-	   left_table:add(nn.ParallelTable():add(encoder:clone('weight', 
-				  'bias', 
-				  'gradWeight',
-				  'gradBias'))
-	       :add(encoder:clone('weight', 
-				  'bias', 
-				  'gradWeight',
-				  'gradBias')))
+	   left_table:add(nn.ParallelTable():add(title_encoder)
+	       :add(body_encoder))
 	       :add(nn.JoinTable(2))
 	       :add(nn.View(-1, self.d_hid, 2))
 	       :add(nn.Mean(3))
 
-	   right_table:add(nn.ParallelTable():add(encoder:clone('weight', 
+	   right_table:add(nn.ParallelTable():add(title_encoder:clone('weight', 
 								'bias', 
 								'gradWeight',
 								'gradBias'))
-			       :add(encoder:clone('weight', 
-						  'bias', 
-						  'gradWeight',
-						  'gradBias')))
+			       :add(body_encoder:clone('weight', 
+						       'bias', 
+						       'gradWeight',
+						       'gradBias')))
 	       :add(nn.JoinTable(2))
 	       :add(nn.View(-1, self.d_hid, 2))
 	       :add(nn.Mean(3))
@@ -154,7 +156,6 @@ function NeuralEncoder:__init(model_type,
     self.criterion = criterion
 
     if modelfile == '' then
-	--self.model_params:rand(self.model_params:size()):add(-0.5):div(10)
 	lookup_table.weight:copy(embeddings)
     end
 end
@@ -182,7 +183,6 @@ function NeuralEncoder:batch_update(title_xq, title_xp, yy, body_xq, body_xp)
 	local grad_loss = self.criterion:backward(scores, yy)
 	
 	self.model:backward({xq, xp}, grad_loss)
-	self:renorm_grad(10)
 	
 	return loss, self.model_grad_params
     end
