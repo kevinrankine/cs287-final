@@ -17,9 +17,6 @@ function NeuralEncoder:__init(model_type,
 			     kernel_width,
 			     pool,
 			     body)
-    local seed = 2016
-    torch.manualSeed(seed)
-    
     self.title_corpus = title_corpus
     self.body_corpus = body_corpus
     
@@ -96,12 +93,36 @@ function NeuralEncoder:__init(model_type,
        elseif model_type == 'cbow' then
 	   self.d_hid = d_in
 	   lookup_table = nn.LookupTable(nwords, d_in)
-	   local importance_gate = nn.LookupTable(nwords, 1)
 	   
 	   encoder:add(lookup_table)
 	   encoder:add(nn.Mean(2))
        elseif model_type == 'cbow++' then
-	   print ("NOT IMPLEMENTED")
+	   -- expects split input
+	   self.d_hid = d_in
+	   lookup_table = nn.LookupTable(nwords, d_in)
+
+	   local lookup = nn.Sequential()
+	   lookup:add(lookup_table)
+	   lookup:add(nn.View(-1, 1, d_in))
+
+	   local gate = nn.Sequential()
+	   gate:add(nn.LookupTable(nwords, 1))
+	   gate:add(nn.View(-1, 1, 1))
+	   gate:add(nn.Sigmoid())
+
+	   local CT = nn.ConcatTable()
+	   CT:add(gate):add(lookup)
+	   
+	   local sub_encoder = nn.Sequential()
+	   sub_encoder:add(CT):add(nn.MM())
+	   sub_encoder:add(nn.View(-1, d_in))
+	   
+
+	   encoder:add(nn.Sequencer(sub_encoder))
+	   encoder:add(nn.JoinTable(2))
+	   encoder:add(nn.View(-1, seq_len, d_in))
+	   encoder:add(nn.Sum(2))
+	   encoder:add(nn.Normalize(2))
        end
        
        local PT = nn.ParallelTable()
@@ -146,7 +167,6 @@ function NeuralEncoder:__init(model_type,
     local criterion = nn.MaxMarginCriterion(margin, self.nbatches)
     
     if gpu ~= 0 then
-	cutorch.manualSeedAll(seed)
 	model:cuda()
 	criterion:cuda()
     end
@@ -157,6 +177,7 @@ function NeuralEncoder:__init(model_type,
 
     if modelfile == '' then
 	lookup_table.weight:copy(embeddings)
+	self.LT = lookup_table
     end
 end
 
@@ -177,12 +198,13 @@ function NeuralEncoder:batch_update(title_xq, title_xp, yy, body_xq, body_xp)
 		xq, xp, yy = {title_xq, body_xq}, {title_xp, body_xp}, yy
 	    end
 	end
-	local scores = self.model:forward({xq, xp})
+	local scores = self.model:forward({xq:split(1, 2), xp:split(1, 2)}) -- FUCK THIS
 
 	local loss = self.criterion:forward(scores, yy)
 	local grad_loss = self.criterion:backward(scores, yy)
 	
-	self.model:backward({xq, xp}, grad_loss)
+	self.model:backward({xq:split(1,2), xp:split(1,2)}, grad_loss) -- FUCK THIS
+	self.LT.gradWeight:zero()
 	
 	return loss, self.model_grad_params
     end

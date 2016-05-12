@@ -50,6 +50,7 @@ do
 
        vec1 = vec1:narrow(1, 1, self.nwords - 1)
        vec2 = vec2:narrow(1, 1, self.nwords - 1)
+       
        vec1:div(vec1:sum(1)[1])
        vec2:div(vec2:sum(1)[1])
        
@@ -68,7 +69,6 @@ do
 	       s2_set[s2[i]] = 1
 	   end
        end
-
 
        return torch.dot(vec1, vec2) / (torch.norm(vec1) * torch.norm(vec2))
    end

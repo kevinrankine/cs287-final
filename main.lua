@@ -1,4 +1,3 @@
-require 'nngraph'
 require 'rnn'
 require 'hdf5'
 require 'models'
@@ -62,7 +61,8 @@ function main()
     if opt.model == 'count' then
 	model = models.CountModel(embeddings:size(1), title_corpus)
 	model:train(title_train_Xq, title_train_Xp, title_train_y)
-    elseif opt.model == 'rnn' or opt.model == 'cbow' or opt.model == 'cnn' then
+	alt_MRR_score(model, dev_qs, dev_ps, dev_Qs)
+    elseif opt.model == 'rnn' or opt.model == 'cbow' or opt.model == 'cnn' or opt.model == 'cbow++' then
 	model = models.NeuralEncoder(opt.model, 
 				     embeddings, 
 				     title_corpus, 
@@ -135,8 +135,8 @@ function score(model, qs, ps, Qs, body)
 	    local title_xq_bad = model.title_corpus[qs[i][1] + 1]:view(1, -1):expand(num_bad, seq_len)
 	    local title_xp_bad = model.title_corpus:index(1, bad_idx)
 	    
-	    good_score = model.model:forward({title_xq_good, title_xp_good}):max()
-	    bad_scores = model.model:forward({title_xq_bad, title_xp_bad})
+	    good_score = model.model:forward({title_xq_good:split(1, 2), title_xp_good:split(1, 2)}):max()
+	    bad_scores = model.model:forward({title_xq_bad:split(1, 2), title_xp_bad:split(1, 2)})
 	else
 	    local title_xq_good = model.title_corpus[qs[i][1] + 1]:view(1, -1):expand(num_good, seq_len)
 	    local title_xp_good = model.title_corpus:index(1, good_idx)
