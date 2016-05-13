@@ -232,13 +232,10 @@ function NeuralEncoder:train(title_Xq, title_Xp, y, modelfile, body_Xq, body_Xp)
 	    local title_xq, title_xp, body_xq, body_xp, yy = self:batchify_inputs(title_Xp, title_Xq, y, i, nbatches, body_Xq, body_Xp)
 	    loss = self:batch_update(title_xq, title_xp, yy, body_xq, body_xp)
 	end
-	if torch.rand(1)[1] < 0.05 then
-	    print (i / title_Xq:size(1), loss)
-	end
 	total_loss = total_loss + loss
     end
     
-    --torch.save(modelfile, self.model)
+    torch.save(modelfile, self.model)
     return total_loss / (title_Xq:size(1) / (bsize * nbatches))
 end
 
