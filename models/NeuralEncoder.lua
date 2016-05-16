@@ -198,12 +198,12 @@ function NeuralEncoder:batch_update(title_xq, title_xp, yy, body_xq, body_xp)
 		xq, xp, yy = {title_xq, body_xq}, {title_xp, body_xp}, yy
 	    end
 	end
-	local scores = self.model:forward({xq:split(1, 2), xp:split(1, 2)}) -- FUCK THIS
+	local scores = self.model:forward({xq, xp})
 
 	local loss = self.criterion:forward(scores, yy)
 	local grad_loss = self.criterion:backward(scores, yy)
 	
-	self.model:backward({xq:split(1,2), xp:split(1,2)}, grad_loss) -- FUCK THIS
+	self.model:backward({xq, xp}, grad_loss)
 	self.LT.gradWeight:zero()
 	
 	return loss, self.model_grad_params

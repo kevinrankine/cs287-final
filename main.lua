@@ -135,8 +135,8 @@ function score(model, qs, ps, Qs, body)
 	    local title_xq_bad = model.title_corpus[qs[i][1] + 1]:view(1, -1):expand(num_bad, seq_len)
 	    local title_xp_bad = model.title_corpus:index(1, bad_idx)
 	    
-	    good_score = model.model:forward({title_xq_good:split(1, 2), title_xp_good:split(1, 2)}):max()
-	    bad_scores = model.model:forward({title_xq_bad:split(1, 2), title_xp_bad:split(1, 2)})
+	    good_score = model.model:forward({title_xq_good, title_xp_good}):max()
+	    bad_scores = model.model:forward({title_xq_bad, title_xp_bad})
 	else
 	    local title_xq_good = model.title_corpus[qs[i][1] + 1]:view(1, -1):expand(num_good, seq_len)
 	    local title_xp_good = model.title_corpus:index(1, good_idx)
